@@ -1,0 +1,145 @@
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+}
+
+.drawer {
+  background: white;
+  width: 100%;
+  max-width: 500px;
+  border-radius: 24px 24px 0 0;
+  padding: 24px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.closeBtn {
+  font-size: 28px;
+  color: var(--secondary-foreground);
+  padding: 4px;
+}
+
+.items {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.empty {
+  text-align: center;
+  color: var(--secondary-foreground);
+  padding: 40px 0;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.itemInfo {
+  flex: 1;
+}
+
+.itemName {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.itemPrice {
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.itemControls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--secondary);
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.qtyBtn {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.quantity {
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 16px;
+  text-align: center;
+}
+
+.footer {
+  border-top: 1px solid var(--border);
+  padding-top: 20px;
+}
+
+.totalRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.totalPrice {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+.checkoutBtn {
+  width: 100%;
+  background: var(--accent);
+  color: white;
+  padding: 14px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.2);
+}
+
+.clearBtn {
+  width: 100%;
+  color: var(--secondary-foreground);
+  font-size: 13px;
+  font-weight: 600;
+}

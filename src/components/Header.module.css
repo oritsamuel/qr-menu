@@ -1,0 +1,42 @@
+.header {
+  display: flex;
+  align-items: center;
+  padding: 24px 16px;
+  background-color: var(--background);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  border-bottom: 1px solid var(--border);
+}
+
+.spacer {
+  width: 40px;
+}
+
+.info {
+  flex: 1;
+  text-align: center;
+}
+
+.companyName {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--foreground);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 40px;
+}
+
+.iconBtn {
+  color: var(--foreground);
+  padding: 8px;
+  opacity: 0.6;
+}
+
+

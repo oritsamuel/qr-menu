@@ -1,40 +1,76 @@
-.filterBar {
+.wrapper {
   display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 16px 0;
-  scrollbar-width: none;
-  background-color: var(--background);
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  background: var(--background);
 }
 
-.filterBar::-webkit-scrollbar {
+/* shared row */
+.row {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.row::-webkit-scrollbar {
   display: none;
 }
 
-.filterBtn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
+/* ── Row 1: category tabs ── */
+.catBtn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 10px 18px;
   background: var(--secondary);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 10px;
   white-space: nowrap;
-  color: var(--secondary-foreground);
-  font-size: 11px;
+  color: var(--foreground);
+  font-size: 14px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
 }
 
-.filterBtn.active {
+.catBtn.catActive {
   background: var(--accent);
   color: white;
   border-color: var(--accent);
 }
 
-.count {
-  display: none;
+.catName {
+  font-size: 14px;
 }
 
+.catCount {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+  vertical-align: super;
+  line-height: 0;
+}
 
+/* ── Row 2: section pills ── */
+.secBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: nowrap;
+  color: var(--secondary-foreground);
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.secBtn.secActive {
+  background: var(--foreground);
+  color: var(--background);
+  border-color: var(--foreground);
+}

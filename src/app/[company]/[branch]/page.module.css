@@ -1,33 +1,85 @@
 .main {
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  max-width: 500px;
-  margin: 0 auto;
-  position: relative;
-  overflow: hidden;
+  min-height: 100vh;
+  padding-top: 64px; /* offset for fixed header */
 }
 
 .content {
   flex: 1;
-  padding: 0 16px;
-  padding-bottom: 120px; /* More space for floating bottom nav */
-  overflow-y: auto;
-  scrollbar-width: none;
+  width: 100%;
+  padding-bottom: 64px;
 }
 
-.content::-webkit-scrollbar {
-  display: none;
+.inner {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
 }
 
 .stickyHeader {
   position: sticky;
-  top: 0;
+  top: 64px;
   z-index: 5;
-  background: transparent;
+  background: var(--background);
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 32px;
+}
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 -32px;
+}
+
+.categoryHeading {
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+  padding: 20px 0 8px;
+  color: var(--foreground);
 }
 
 .sections {
   margin-top: 8px;
 }
 
+/* ── Loading / error states ── */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  gap: 16px;
+  color: var(--secondary-foreground);
+  font-size: 15px;
+}
+
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorText {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.retryBtn {
+  background: var(--accent);
+  color: white;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}

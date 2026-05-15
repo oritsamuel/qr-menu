@@ -1,60 +1,46 @@
 .card {
   display: flex;
-  gap: 16px;
-  padding: 16px;
-  margin-bottom: 16px;
-  align-items: center;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: 240px;
   background: white;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.imageContainer {
-  width: 100px;
-  height: 100px;
-  flex-shrink: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  background: var(--secondary);
+.card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .image {
   width: 100%;
-  height: 100%;
+  height: 160px;
   object-fit: cover;
+  background: var(--secondary);
+  flex-shrink: 0;
 }
 
-.content {
+.info {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 14px 0;
 }
 
 .name {
-  font-family: var(--font-serif);
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
-  line-height: 1.2;
   color: var(--foreground);
-}
-
-.price {
-  font-family: var(--font-serif);
-  font-size: 17px;
-  font-weight: 700;
-  color: var(--accent);
+  line-height: 1.3;
 }
 
 .description {
-  font-size: 11px;
+  font-size: 12px;
   color: var(--secondary-foreground);
   line-height: 1.4;
   display: -webkit-box;
@@ -63,54 +49,72 @@
   overflow: hidden;
 }
 
-.footer {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
+.price {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
   margin-top: 4px;
 }
 
-.counter {
+.actions {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  background: var(--accent);
-  color: white;
-  padding: 6px 14px;
-  border-radius: 20px;
-  min-width: 100px;
-  justify-content: center;
-}
-
-.counterBtn {
-  font-size: 20px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  width: 24px;
-  height: 24px;
-}
-
-.quantity {
-  font-size: 14px;
-  font-weight: 700;
-  min-width: 14px;
-  text-align: center;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 14px 14px;
 }
 
 .addBtn {
   background: var(--accent);
   color: white;
   padding: 8px 18px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  min-width: 100px;
-  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.2);
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(230, 57, 70, 0.25);
+  transition: opacity 0.15s;
 }
 
+.addBtn:hover {
+  opacity: 0.88;
+}
 
+.counter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--accent);
+  color: white;
+  padding: 7px 14px;
+  border-radius: 24px;
+}
 
+.counterBtn {
+  font-size: 18px;
+  line-height: 1;
+  color: white;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.quantity {
+  font-size: 14px;
+  font-weight: 700;
+  min-width: 16px;
+  text-align: center;
+}
+
+.likeBtn {
+  color: var(--secondary-foreground);
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+}
+
+.likeBtn:hover {
+  opacity: 1;
+  color: var(--accent);
+}

@@ -1,42 +1,87 @@
 .header {
   display: flex;
   align-items: center;
-  padding: 24px 16px;
+  padding: 0 32px;
+  height: 64px;
   background-color: var(--background);
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
   border-bottom: 1px solid var(--border);
+  max-width: 100%;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .spacer {
   width: 40px;
 }
 
-.info {
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   flex: 1;
-  text-align: center;
+}
+
+.logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
 }
 
 .companyName {
   font-family: var(--font-serif);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--foreground);
 }
 
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  width: 40px;
+.branchName {
+  font-size: 13px;
+  color: var(--secondary-foreground);
+  margin-top: 2px;
 }
 
-.iconBtn {
-  color: var(--foreground);
-  padding: 8px;
-  opacity: 0.6;
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cartBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--accent);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.table {
+  color: var(--accent);
+  font-weight: 600;
 }
 
 

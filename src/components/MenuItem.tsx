@@ -27,7 +27,8 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
 
   return (
     <div className={styles.card}>
-      <img src={item.image} alt={item.name} className={styles.image} />
+      <img src={item.image && item.image.trim() !== "" ? item.image : "https://placehold.co"}
+        alt={item.name} className={styles.image} />
 
       <div className={styles.info}>
         <h3 className={styles.name}>{item.name}</h3>

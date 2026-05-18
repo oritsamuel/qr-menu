@@ -143,7 +143,16 @@ function MenuPageInner({
         </div>
       </div>
 
-      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <CartDrawer
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        table={activeSection || undefined}
+        companyCode={companyInfo?.companyCode}
+        branchCode={branchCode}
+        branchName={data?.branchName}
+        companyName={data?.companyName}
+        industryType={1992}
+      />
     </main>
   );
 }

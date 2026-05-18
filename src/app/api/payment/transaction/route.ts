@@ -16,29 +16,30 @@ const upstreamHeaders: Record<string, string> = {
   Authorization: `Bearer ${process.env.HULUBEJE_TOKEN ?? ""}`,
 };
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ tin: string }> }
-) {
-  const { tin } = await params;
-  const url = `${BASE}/routing/getcompaniesbytype?IndustryType=1992`;
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const code = searchParams.get("code");
+
+  if (!code) {
+    return NextResponse.json({ error: "Missing code parameter" }, { status: 400 });
+  }
 
   try {
-    const upstream = await fetch(url, {
-      headers: upstreamHeaders,
-      cache: "no-store",
-    });
+    const upstream = await fetch(
+      `${BASE}/payment/generatetransactionid?code=${encodeURIComponent(code)}`,
+      { headers: upstreamHeaders, cache: "no-store" }
+    );
 
-    const body = await upstream.json();
+    const data = await upstream.json();
 
     if (!upstream.ok) {
       return NextResponse.json(
-        { error: `Upstream error ${upstream.status}`, detail: body },
+        { error: `Upstream error ${upstream.status}`, detail: data },
         { status: upstream.status }
       );
     }
 
-    return NextResponse.json(body);
+    return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json(
       { error: "Failed to reach upstream API", detail: String(err) },

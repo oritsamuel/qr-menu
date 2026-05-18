@@ -13,9 +13,9 @@ import styles from "./page.module.css";
 
 function MenuPage() {
   const searchParams = useSearchParams();
-  const tin        = searchParams.get("tin") ?? "";
+  const tin = searchParams.get("tin") ?? "";
   const branchCode = searchParams.get("bc") ?? "";
-  const tableParam = searchParams.get("table") ?? "T18";
+  const tableParam = searchParams.get("table") ?? "";
   // searchParams.get("it") — industryType, available for future use
 
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -45,13 +45,13 @@ function MenuPage() {
         return Promise.all([
           fetchMenuData(companyCode, resolvedBranch).then((menu) => {
             menu.companyName = info.brandName || info.companyName;
-            menu.branchName  = info.branch?.name ?? branchCode;
+            menu.branchName = info.branch?.name ?? branchCode;
             setData(menu);
           }),
           tableParam
             ? fetchTables(companyCode, resolvedBranch).then(() => {
-                setTableValid(true); // skip validation for now, always valid
-              })
+              setTableValid(true); // skip validation for now, always valid
+            })
             : Promise.resolve(setTableValid(true)),
         ]);
       })
@@ -181,6 +181,7 @@ function MenuPage() {
         table={tableParam || undefined}
         companyCode={companyInfo?.companyCode}
         branchCode={branchCode}
+        industryType={Number(searchParams.get("it") ?? 1992)}
       />
     </main>
   );

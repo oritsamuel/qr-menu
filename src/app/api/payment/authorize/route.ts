@@ -16,30 +16,29 @@ const upstreamHeaders: Record<string, string> = {
   Authorization: `Bearer ${process.env.HULUBEJE_TOKEN ?? ""}`,
 };
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ tin: string }> }
-) {
-  const { tin } = await params;
-  const url = `${BASE}/routing/getcompaniesbytype?IndustryType=1992`;
-
+export async function POST(req: NextRequest) {
   try {
-    const upstream = await fetch(url, {
+    const body = await req.json();
+
+    const upstream = await fetch(`${BASE}/payment/authorization`, {
+      method: "POST",
       headers: upstreamHeaders,
+      body: JSON.stringify(body),
       cache: "no-store",
     });
 
-    const body = await upstream.json();
+    const data = await upstream.json();
 
     if (!upstream.ok) {
       return NextResponse.json(
-        { error: `Upstream error ${upstream.status}`, detail: body },
+        { error: `Upstream error ${upstream.status}`, detail: data },
         { status: upstream.status }
       );
     }
 
-    return NextResponse.json(body);
+    return NextResponse.json(data);
   } catch (err) {
+    console.error("[payment/authorize] upstream fetch failed:", err);
     return NextResponse.json(
       { error: "Failed to reach upstream API", detail: String(err) },
       { status: 502 }

@@ -275,6 +275,223 @@ export async function calculateLineItems(
   return json.data;
 }
 
+export interface PaymentOption {
+  code: string;
+  accountNo: string;
+  operationMode: number;
+  balanceAmount: number | null;
+  paymentProcessorName: string;
+  paymentProcessorUnitName: string;
+  paymentProcessorConsigneeId: number;
+  paymentProcessorConsigneeUnit: number;
+  paymentProcessorSpecialization: number;
+  paymentProcessorImage: string;
+  paymentProcessorUnitImage: string;
+}
+
+export interface AuthorizationRequest {
+  userMobileNumber: string;
+  operationMode: number;
+  supplierConsigneeId: number;   // companyCode
+  supplierConsigneeUnit: number; // branchCode
+  paymentProcessorConsigneeId: number;
+  paymentProcessorConsigneeUnit: number;
+  transactionId: string;
+  amount: number;
+  additionalParameters: { referenceNumber: string };
+}
+
+export interface AuthorizationResult {
+  isSuccessful: boolean;
+  errorMessages: string[] | null;
+  additionalParameters: {
+    type: string;
+    isAsyncMode: string;
+    redirectUrl?: string;
+  } | null;
+  transactionReference: string | null;
+}
+
+export async function authorizePayment(
+  req: AuthorizationRequest
+): Promise<AuthorizationResult> {
+  const res = await fetch("/api/payment/authorize", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Authorization API error: ${res.status}`);
+  }
+
+  return res.json();
+}
+
+export interface VoucherSaveRequest {
+  code: string; // phone number
+  companyCode: number;
+  branchCode: number;
+  industryType: number;
+  lineItems: LineItem[];
+  paymentMethod: string; // e.g. "Telebirr USSD Push"
+  transactionReference: string;
+  paymentInfo: PaymentInfo;
+  latitude: number;
+  longitude: number;
+  platform: string;
+  promoDetail: any | null; // null in example payload
+  servingMethod: ServingMethod;
+  ActivityLog: ActivityLog;
+  onSuccess: OnSuccess;
+}
+
+export interface LineItem {
+  name: string;
+  article: number;
+  unitAmount: number;
+  quantity: number;
+  uom: number;
+  note: string;
+}
+
+export interface PaymentInfo {
+  type: string; // "ussdpush" | "otp" | "ussd" | "card"
+  isAsyncMode: string; // "true" | "false"
+  paymentTransactionRequest: PaymentTransactionRequest;
+}
+
+export interface PaymentTransactionRequest {
+  paymentType: any | null;
+  userMobileNumber: string;
+  operationMode: number;
+  supplierConsigneeId: number;
+  supplierConsigneeUnit: number;
+  paymentProcessorConsigneeId: number;
+  paymentProcessorConsigneeUnit: number;
+  amount: number;
+  transactionId: string;
+  additionalParameters: {
+    referenceNumber: string;
+  };
+  pin: string;
+}
+
+export interface ServingMethod {
+  branchCode: number;
+  branchName: string;
+  deliveryMethod: any | null;
+  address: any | null;
+  scheduleDateTime: any | null;
+  servingMethodType: string; // e.g. "IN_HOUSE_DINING"
+  specificAddressName: any | null;
+  selectedTableName: string;
+}
+
+export interface ActivityLog {
+  code: string;
+  target: string;
+  platform: string;
+  latitude: number;
+  longitude: number;
+  appVersion: string;
+}
+
+export interface OnSuccess {
+  firstName: string;
+  company: string;
+  branch: string;
+  nightCount: number | null;
+  seats: number | null;
+  movieName: string | null;
+  movieDimension: string | null;
+  hallName: string | null;
+  time: string;
+  date: string; // ISO Date String
+  picture: string | null;
+  scheduleDateTime: string | null;
+}
+
+export async function saveVoucher(req: VoucherSaveRequest): Promise<{ isSuccessful: boolean; errorMessages: string[] | null; transactionReference: string | null }> {
+
+
+  console.log("--- VOUCHER OBJECT SHAPE ---");
+  console.log(JSON.stringify(req, null, 2));
+  console.log("----------------------------");
+
+
+  // const res = await fetch("/api/voucher/save", {
+  //   method: "POST",
+  //   headers: { "Content-Type": "application/json" },
+  //   body: JSON.stringify(req),
+  //   cache: "no-store",
+  // });
+
+  // if (!res.ok) {
+  //   const err = await res.json().catch(() => ({}));
+  //   throw new Error(err.error ?? `Voucher save error: ${res.status}`);
+  // }
+
+  // return res.json();
+
+  return {
+    isSuccessful: false,
+    errorMessages: null,
+    transactionReference: "MOCK-TX-REF-12345"
+  };
+}
+
+export async function fetchPaymentOptions(
+  phoneNumber: string,
+  companyCode: number,
+  branchCode: number | string
+): Promise<PaymentOption[]> {
+  const params = new URLSearchParams({
+    code: phoneNumber,
+    companyCode: String(companyCode),
+    branchCode: String(branchCode),
+  });
+
+  const res = await fetch(`/api/payment/options?${params.toString()}`, {
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Payment options API error: ${res.status}`);
+  }
+
+  const json = await res.json();
+  if (!json.isSuccessful) {
+    throw new Error(json.errorMessages?.join(", ") ?? "Failed to fetch payment options");
+  }
+
+  return json.data as PaymentOption[];
+}
+
+export async function generateTransactionId(
+  phoneNumber: string
+): Promise<string> {
+  const res = await fetch(
+    `/api/payment/transaction?code=${encodeURIComponent(phoneNumber)}`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Transaction API error: ${res.status}`);
+  }
+
+  const json = await res.json();
+  if (!json.isSuccessful) {
+    throw new Error(json.errorMessages?.join(", ") ?? "Failed to generate transaction");
+  }
+
+  return json.data as string;
+}
+
 export async function fetchTables(
   companyCode: string,
   branchCode: string
@@ -297,20 +514,34 @@ export async function fetchCompanyByTin(
   tin: string,
   branchCode: string
 ): Promise<CompanyInfo> {
+  // 1. Fetch the raw payload (which contains the array of all companies)
   const res = await fetch(`/api/company/${tin}`, { cache: "no-store" });
+  
+  const json: any = await res.json().catch(() => ({}));
+
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.error ?? `Company API error: ${res.status}`);
+    throw new Error(json.error ?? `API connection error: ${res.status}`);
   }
 
-  const json: ApiCompanyByTinResponse = await res.json();
-  if (!json.isSuccessful) {
-    throw new Error(json.errorMessages?.join(", ") ?? "Unknown API error");
+  // 2. Ensure the upstream data array exists
+  const companyList = json.data;
+  if (!Array.isArray(companyList)) {
+    throw new Error("Invalid data format: Expected a list of companies.");
   }
 
-  const company = json.data;
-  const branch = company.branches.find((b) => String(b.code) === branchCode) ?? company.branches[0] ?? null;
+  // 3. Locate the specific company by its TIN
+  const company = companyList.find((c: any) => c.tin === tin);
+  if (!company) {
+    throw new Error(`Company with TIN ${tin} not found.`);
+  }
 
+  // 4. Locate the target branch within that specific company
+  const branch = 
+    company.branches?.find((b: any) => String(b.code) === branchCode) ?? 
+    company.branches?.[0] ?? 
+    null;
+
+  // 5. Construct and return the mapped CompanyInfo object
   return {
     companyCode: company.code,
     companyName: company.tradeName,

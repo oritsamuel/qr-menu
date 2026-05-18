@@ -181,6 +181,8 @@ function MenuPage() {
         table={tableParam || undefined}
         companyCode={companyInfo?.companyCode}
         branchCode={branchCode}
+        branchName={data.branchName}
+        companyName={data.companyName}
         industryType={Number(searchParams.get("it") ?? 1992)}
       />
     </main>

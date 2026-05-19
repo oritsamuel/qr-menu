@@ -10,6 +10,8 @@ import MenuSection from "@/components/MenuSection";
 import CartDrawer from "@/components/CartDrawer";
 import BottomNav from "@/components/BottomNav";
 import ItemDetailsPage from "@/components/ItemDetailsPage";
+import SearchBar from "@/components/SearchBar";
+import FilterDrawer, { FilterSettings } from "@/components/FilterDrawer";
 import { useCart } from "@/context/CartContext";
 import styles from "./page.module.css";
 
@@ -28,6 +30,12 @@ function MenuPage() {
   const [tableValid, setTableValid] = useState<boolean | null>(null); // null = checking
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<FilterSettings>({
+    sortBy: "default",
+  });
+
   const { totalCount } = useCart();
 
   const loadAll = () => {
@@ -92,9 +100,37 @@ function MenuPage() {
 
   const categoryItems = useMemo(() => {
     if (!data) return [];
-    if (activeCategory === "all") return data.items;
-    return data.items.filter((item) => item.category === activeCategory);
-  }, [activeCategory, data]);
+    let items = [...data.items];
+
+    // 1. Filter by category
+    if (activeCategory !== "all") {
+      items = items.filter((item) => item.category === activeCategory);
+    }
+
+    // 2. Filter by search query
+    if (searchQuery.trim() !== "") {
+      const q = searchQuery.toLowerCase().trim();
+      items = items.filter(
+        (item) =>
+          item.name.toLowerCase().includes(q) ||
+          (item.description && item.description.toLowerCase().includes(q))
+      );
+    }
+
+    // 3. Sort by settings
+    if (filters.sortBy === "price-asc") {
+      items.sort((a, b) => a.price - b.price);
+    } else if (filters.sortBy === "price-desc") {
+      items.sort((a, b) => b.price - a.price);
+    } else if (filters.sortBy === "name-asc") {
+      items.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (filters.sortBy === "name-desc") {
+      items.sort((a, b) => b.name.localeCompare(a.name));
+    }
+
+    return items;
+  }, [activeCategory, data, searchQuery, filters]);
+
 
   const sections = useMemo(() => {
     const seen = new Set<string>();
@@ -184,6 +220,7 @@ function MenuPage() {
 
           <div className={styles.content}>
             <div className={styles.stickyHeader}>
+              <SearchBar value={searchQuery} onChange={setSearchQuery} onFilterClick={() => setIsFilterOpen(true)} />
               <FilterBar
                 categories={data.categories}
                 activeCategory={activeCategory}
@@ -194,6 +231,8 @@ function MenuPage() {
               />
               <div className={styles.divider} />
             </div>
+
+
 
             <div className={styles.inner}>
               {activeCategoryLabel && activeCategory !== "all" && (
@@ -214,12 +253,20 @@ function MenuPage() {
             companyCode={companyInfo?.companyCode}
             branchCode={branchCode}
           />
+          <FilterDrawer
+            isOpen={isFilterOpen}
+            onClose={() => setIsFilterOpen(false)}
+            currentFilters={filters}
+            onApply={setFilters}
+            matchingCount={categoryItems.length}
+          />
           <BottomNav onCartClick={() => setIsCartOpen(true)} />
         </>
       )}
     </main>
   );
 }
+
 
 
 export default function Page() {

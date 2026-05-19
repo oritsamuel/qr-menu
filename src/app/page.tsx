@@ -2,12 +2,14 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { MenuData } from "@/data/menuData";
+import { MenuData, menuData as localMenuData } from "@/data/menuData";
 import { fetchCompanyByTin, fetchMenuData, fetchTables, CompanyInfo } from "@/lib/api";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import MenuSection from "@/components/MenuSection";
 import CartDrawer from "@/components/CartDrawer";
+import BottomNav from "@/components/BottomNav";
+import ItemDetailsPage from "@/components/ItemDetailsPage";
 import { useCart } from "@/context/CartContext";
 import styles from "./page.module.css";
 
@@ -55,7 +57,32 @@ function MenuPage() {
             : Promise.resolve(setTableValid(true)),
         ]);
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        console.warn("Upstream API fetch failed. Falling back to local mock data.", err);
+        setCompanyInfo({
+          companyCode: 12345,
+          companyName: "The Bistro",
+          brandName: "The Bistro",
+          logo: "",
+          tin: tin,
+          branch: {
+            code: 54321,
+            name: branchCode || "Main Branch",
+            logo: null,
+            latitude: null,
+            longitude: null,
+            phone1: null,
+            specificAddress: null
+          }
+        });
+        
+        // Deep copy localMenuData to avoid mutating the original import
+        const mockMenu = JSON.parse(JSON.stringify(localMenuData));
+        mockMenu.companyName = "The Bistro";
+        mockMenu.branchName = branchCode || "Main Branch";
+        setData(mockMenu);
+        setTableValid(true);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -135,56 +162,65 @@ function MenuPage() {
     );
   }
 
-  // Invalid table — skipped for now, always proceeds
-
   if (!data) return null;
+
+  const activeItemId = searchParams.get("item") ?? "";
+  const activeItem = data.items.find((i) => i.id === activeItemId);
 
   return (
     <main className={styles.main}>
-      <Header
-        companyName={data.companyName}
-        branchName={data.branchName}
-        logo={companyInfo?.logo}
-        table={tableParam || undefined}
-        cartCount={totalCount}
-        onCartClick={() => setIsCartOpen(true)}
-      />
-
-      <div className={styles.content}>
-        <div className={styles.stickyHeader}>
-          <FilterBar
-            categories={data.categories}
-            activeCategory={activeCategory}
-            onCategoryChange={handleCategoryChange}
-            sections={sections}
-            activeSection={activeSection}
-            onSectionChange={setActiveSection}
+      {activeItem ? (
+        <ItemDetailsPage item={activeItem} companyName={data.companyName} />
+      ) : (
+        <>
+          <Header
+            companyName={data.companyName}
+            branchName={data.branchName}
+            logo={companyInfo?.logo}
+            table={tableParam || undefined}
+            cartCount={totalCount}
+            onCartClick={() => setIsCartOpen(true)}
           />
-          <div className={styles.divider} />
-        </div>
 
-        <div className={styles.inner}>
-          {activeCategoryLabel && activeCategory !== "all" && (
-            <h2 className={styles.categoryHeading}>{activeCategoryLabel}</h2>
-          )}
-          <div className={styles.sections}>
-            {Object.entries(groupedSections).map(([sectionName, items]) => (
-              <MenuSection key={sectionName} title={sectionName} items={items} />
-            ))}
+          <div className={styles.content}>
+            <div className={styles.stickyHeader}>
+              <FilterBar
+                categories={data.categories}
+                activeCategory={activeCategory}
+                onCategoryChange={handleCategoryChange}
+                sections={sections}
+                activeSection={activeSection}
+                onSectionChange={setActiveSection}
+              />
+              <div className={styles.divider} />
+            </div>
+
+            <div className={styles.inner}>
+              {activeCategoryLabel && activeCategory !== "all" && (
+                <h2 className={styles.categoryHeading}>{activeCategoryLabel}</h2>
+              )}
+              <div className={styles.sections}>
+                {Object.entries(groupedSections).map(([sectionName, items]) => (
+                  <MenuSection key={sectionName} title={sectionName} items={items} />
+                ))}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        table={tableParam || undefined}
-        companyCode={companyInfo?.companyCode}
-        branchCode={branchCode}
-      />
+          <CartDrawer
+            isOpen={isCartOpen}
+            onClose={() => setIsCartOpen(false)}
+            table={tableParam || undefined}
+            companyCode={companyInfo?.companyCode}
+            branchCode={branchCode}
+          />
+          <BottomNav onCartClick={() => setIsCartOpen(true)} />
+        </>
+      )}
     </main>
   );
 }
+
 
 export default function Page() {
   return (

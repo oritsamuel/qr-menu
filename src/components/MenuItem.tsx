@@ -4,6 +4,7 @@ import React from "react";
 import styles from "./MenuItem.module.css";
 import { MenuItem as MenuItemType } from "@/data/menuData";
 import { useCart } from "@/context/CartContext";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 
 interface MenuItemProps {
   item: MenuItemType;
@@ -11,6 +12,9 @@ interface MenuItemProps {
 
 const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
   const { cart, updateQuantity, addItem } = useCart();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const cartItem = cart.find((i) => i.id === item.id);
   const quantity = cartItem ? cartItem.quantity : 0;
@@ -25,8 +29,19 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
 
   const handleDecrease = () => updateQuantity(item.id, quantity - 1);
 
+  // Navigate to item details page by setting 'item' query param in URL
+  const handleCardClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest(`.${styles.actions}`)) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("item", item.id);
+    router.push(`${pathname}?${params.toString()}`);
+  };
+
   return (
-    <div className={styles.card}>
+    <div className={styles.card} onClick={handleCardClick} style={{ cursor: "pointer" }}>
       <img src={item.image} alt={item.name} className={styles.image} />
 
       <div className={styles.info}>
@@ -62,3 +77,5 @@ const MenuItem: React.FC<MenuItemProps> = ({ item }) => {
 };
 
 export default MenuItem;
+
+

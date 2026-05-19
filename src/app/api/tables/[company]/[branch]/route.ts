@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 const BASE = "https://v7-hulubeje.cnetcommerce.com/api";
 
+const API_KEY = process.env.HULUBEJE_API_KEY ?? "";
+const AUTH_TOKEN = process.env.HULUBEJE_TOKEN ?? "";
+
 const upstreamHeaders: Record<string, string> = {
   "Content-Type": "application/json",
   "X-Metadata": JSON.stringify({
@@ -12,8 +15,8 @@ const upstreamHeaders: Record<string, string> = {
     code: "0000000000",
     langLocale: "en",
   }),
-  "x-api-key": process.env.HULUBEJE_API_KEY ?? "",
-  Authorization: `Bearer ${process.env.HULUBEJE_TOKEN ?? ""}`,
+  ...(API_KEY ? { "x-api-key": API_KEY } : {}),
+  ...(AUTH_TOKEN ? { Authorization: `Bearer ${AUTH_TOKEN}` } : {}),
 };
 
 export async function GET(
@@ -29,7 +32,10 @@ export async function GET(
       cache: "no-store",
     });
 
-    const body = await upstream.json();
+    const contentType = upstream.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? await upstream.json()
+      : await upstream.text();
 
     if (!upstream.ok) {
       return NextResponse.json(

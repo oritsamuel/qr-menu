@@ -1,5 +1,5 @@
 "use client";
-
+ 
 import React, { useState, useMemo, use, useEffect } from "react";
 import { MenuData } from "@/data/menuData";
 import { fetchCompanyByTin, fetchMenuData, CompanyInfo } from "@/lib/api";

@@ -87,18 +87,6 @@ export interface CompanyInfo {
 
 import { MenuItem, Category, MenuData } from "@/data/menuData";
 
-const BASE = "https://v7-hulubeje.cnetcommerce.com/api";
-
-const HEADERS = {
-  "X-Metadata": JSON.stringify({
-    platform: "Web",
-    appVersion: "1.0.0",
-    langLocale: "en",
-    code: "0924345144", // required by the API for auth
-  }),
-  "Content-Type": "application/json",
-};
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Recursively collect leaf products from the nested category tree */
@@ -307,6 +295,7 @@ export interface AuthorizationResult {
   additionalParameters: {
     type: string;
     isAsyncMode: string;
+    RedirectUrl?: string;
     redirectUrl?: string;
   } | null;
   transactionReference: string | null;
@@ -331,21 +320,79 @@ export async function authorizePayment(
 }
 
 export interface VoucherSaveRequest {
-  code: string; // phone number
+  code: string;
+  notifyInvitee: boolean;
+  inviteeName: null;
+  inviteePhone: null;
+  buyerTin: null;
+  buyerCompanyName: null;
   companyCode: number;
   branchCode: number;
   industryType: number;
-  lineItems: LineItem[];
-  paymentMethod: string; // e.g. "Telebirr USSD Push"
+  lineItems: {
+    name: string;
+    article: number;
+    unitAmount: number;
+    quantity: number;
+    parent: null;
+    uom: number;
+    note: string;
+  }[];
+  paymentMethod: string;
   transactionReference: string;
-  paymentInfo: PaymentInfo;
+  paymentInfo: {
+    type: string;
+    isAsyncMode: string;
+    paymentType: null;
+    paymentTransactionRequest: {
+      userMobileNumber: string;
+      operationMode: number;
+      supplierConsigneeId: number;
+      supplierConsigneeUnit: number;
+      paymentProcessorConsigneeId: number;
+      paymentProcessorConsigneeUnit: number;
+      transactionId: string;
+      amount: number;
+      additionalParameters: { referenceNumber: string };
+      pin: string;
+    };
+  };
   latitude: number;
   longitude: number;
   platform: string;
-  promoDetail: any | null; // null in example payload
-  servingMethod: ServingMethod;
-  ActivityLog: ActivityLog;
-  onSuccess: OnSuccess;
+  deviceId: string;
+  promoDetail: null;
+  onSuccess: {
+    firstName: string;
+    company: string;
+    branch: string;
+    nightCount: null;
+    seats: null;
+    movieName: null;
+    movieDimension: null;
+    hallName: null;
+    time: null;
+    date: null;
+    picture: null;
+    scheduleDateTime: null;
+  };
+  servingMethod: {
+    address: null;
+    scheduleDateTime: null;
+    servingMethodType: string;
+    specificAddressName: null;
+    specialRequest: null;
+    selectedTableName: string | null;
+  };
+  deliveryOrderRequest: null;
+  ActivityLog: {
+    platform: string;
+    latitude: number;
+    longitude: number;
+    appVersion: string;
+    code: string;
+    langLocale: string;
+  };
 }
 
 export interface LineItem {
@@ -417,30 +464,30 @@ export interface OnSuccess {
 export async function saveVoucher(req: VoucherSaveRequest): Promise<{ isSuccessful: boolean; errorMessages: string[] | null; transactionReference: string | null }> {
 
 
-  console.log("--- VOUCHER OBJECT SHAPE ---");
-  console.log(JSON.stringify(req, null, 2));
-  console.log("----------------------------");
+  // console.log("--- VOUCHER OBJECT SHAPE ---");
+  // console.log(JSON.stringify(req, null, 2));
+  // console.log("----------------------------");
 
 
-  // const res = await fetch("/api/voucher/save", {
-  //   method: "POST",
-  //   headers: { "Content-Type": "application/json" },
-  //   body: JSON.stringify(req),
-  //   cache: "no-store",
-  // });
+  const res = await fetch("/api/voucher/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    cache: "no-store",
+  });
 
-  // if (!res.ok) {
-  //   const err = await res.json().catch(() => ({}));
-  //   throw new Error(err.error ?? `Voucher save error: ${res.status}`);
-  // }
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Voucher save error: ${res.status}`);
+  }
 
-  // return res.json();
+  return res.json();
 
-  return {
-    isSuccessful: false,
-    errorMessages: null,
-    transactionReference: "MOCK-TX-REF-12345"
-  };
+  // return {
+  //   isSuccessful: false,
+  //   errorMessages: null,
+  //   transactionReference: "MOCK-TX-REF-12345"
+  // };
 }
 
 export async function fetchPaymentOptions(
@@ -469,6 +516,31 @@ export async function fetchPaymentOptions(
   }
 
   return json.data as PaymentOption[];
+}
+
+export interface TransactionResolutionResult {
+  isSuccessful: boolean;
+  errorMessages: string[] | null;
+  additionalParameters: Record<string, string> | null;
+  transactionReference: string | null;
+}
+
+export async function checkTransactionResolution(
+  req: AuthorizationRequest & { pin?: string }
+): Promise<TransactionResolutionResult> {
+  const res = await fetch("/api/payment/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(req),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Check resolution error: ${res.status}`);
+  }
+
+  return res.json();
 }
 
 export async function generateTransactionId(
@@ -552,18 +624,4 @@ export async function fetchCompanyByTin(
   };
 }
 
-export async function fetchCompanyInfo(
-  companyCode: string,
-  branchCode: string
-): Promise<{ companyName: string; branchName: string }> {
-  // The routing endpoint returns a list; we match by code
-  const url = `${BASE}/routing/getcompanysetting?companyCode=${companyCode}&industryType=1992&branchCode=${branchCode}`;
-  try {
-    const res = await fetch(url, { headers: HEADERS, cache: "no-store" });
-    if (!res.ok) return { companyName: companyCode, branchName: branchCode };
-    // The setting endpoint doesn't return names, so we fall back to the params
-    return { companyName: companyCode, branchName: branchCode };
-  } catch {
-    return { companyName: companyCode, branchName: branchCode };
-  }
-}
+// fetchCompanyInfo removed — use fetchCompanyByTin instead

@@ -4,12 +4,11 @@
  * All proxy routes call getToken() instead of reading from env directly.
  */
 
-const BASE = "https://v7-hulubeje.cnetcommerce.com/api";
-const API_KEY = process.env.HULUBEJE_API_KEY ?? "";
-
-// Guest credentials
-const GUEST_CODE     = "0000000000";
-const GUEST_PASSWORD = "0000000000";
+const BASE           = process.env.HULUBEJE_BASE_URL ?? "https://v7-hulubeje.cnetcommerce.com/api";
+const API_KEY        = process.env.HULUBEJE_API_KEY ?? "";
+const GUEST_CODE     = process.env.HULUBEJE_GUEST_CODE ?? "0000000000";
+const GUEST_PASSWORD = process.env.HULUBEJE_GUEST_PASSWORD ?? "0000000000";
+const APP_VERSION    = process.env.HULUBEJE_APP_VERSION ?? "2.1.7+145";
 
 interface TokenState {
   token: string;
@@ -46,7 +45,7 @@ async function login(): Promise<string> {
         platform: "Android",
         latitude: 37.4219983,
         longitude: -122.084,
-        appVersion: "2.1.7+145",
+        appVersion: APP_VERSION,
         code: GUEST_CODE,
         langLocale: "en",
       }),

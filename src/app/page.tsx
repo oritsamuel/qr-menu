@@ -171,9 +171,13 @@ function MenuPage() {
         onCartClick={() => setIsCartOpen(true)}
       />
 
-<<<<<<< HEAD
       <div className={styles.content}>
         <div className={styles.stickyHeader}>
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onFilterClick={() => setIsFilterOpen(true)}
+          />
           <FilterBar
             categories={data.categories}
             activeCategory={activeCategory}
@@ -198,39 +202,10 @@ function MenuPage() {
                 onItemClick={(item) => setSelectedItem(item)}
               />
             ))}
-=======
-          <div className={styles.content}>
-            <div className={styles.stickyHeader}>
-              <SearchBar value={searchQuery} onChange={setSearchQuery} onFilterClick={() => setIsFilterOpen(true)} />
-              <FilterBar
-                categories={data.categories}
-                activeCategory={activeCategory}
-                onCategoryChange={handleCategoryChange}
-                sections={sections}
-                activeSection={activeSection}
-                onSectionChange={setActiveSection}
-              />
-              <div className={styles.divider} />
-            </div>
-
-
-
-            <div className={styles.inner}>
-              {activeCategoryLabel && activeCategory !== "all" && (
-                <h2 className={styles.categoryHeading}>{activeCategoryLabel}</h2>
-              )}
-              <div className={styles.sections}>
-                {Object.entries(groupedSections).map(([sectionName, items]) => (
-                  <MenuSection key={sectionName} title={sectionName} items={items} />
-                ))}
-              </div>
-            </div>
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
           </div>
         </div>
       </div>
 
-<<<<<<< HEAD
       <CartDrawer
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
@@ -241,6 +216,15 @@ function MenuPage() {
         companyName={data.companyName}
         industryType={Number(searchParams.get("it") ?? 1992)}
       />
+
+      <FilterDrawer
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        currentFilters={filters}
+        onApply={setFilters}
+        matchingCount={categoryItems.length}
+      />
+
       <BottomNav onCartClick={() => setIsCartOpen(true)} />
 
       {/* Item detail modal — renders over the menu, no navigation */}
@@ -250,34 +234,11 @@ function MenuPage() {
           companyName={data.companyName}
           onClose={() => setSelectedItem(null)}
         />
-=======
-          <CartDrawer
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            table={tableParam || undefined}
-            companyCode={companyInfo?.companyCode}
-            branchCode={branchCode}
-          />
-          <FilterDrawer
-            isOpen={isFilterOpen}
-            onClose={() => setIsFilterOpen(false)}
-            currentFilters={filters}
-            onApply={setFilters}
-            matchingCount={categoryItems.length}
-          />
-          <BottomNav onCartClick={() => setIsCartOpen(true)} />
-        </>
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
       )}
     </main>
   );
 }
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
 export default function Page() {
   return (
     <Suspense fallback={

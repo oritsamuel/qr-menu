@@ -70,6 +70,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
   const [polling, setPolling]       = useState(false);
   const [pollError, setPollError]   = useState<string | null>(null);
   const pollTimerRef                = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveAbortRef                = useRef<AbortController | null>(null);
 
   // ── Calculation effects ────────────────────────────────────────────────────
   const runCalculation = () => {
@@ -248,6 +249,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     if (!resolvedTxId || !resolvedInfo) return;
 
     setSaving(true); setSaveError(null);
+
+    const abortController = new AbortController();
+    saveAbortRef.current = abortController;
 
     try {      const result = await saveVoucher({
         code: phone.trim(),

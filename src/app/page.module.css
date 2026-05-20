@@ -24,13 +24,13 @@
   background: var(--background);
   max-width: 900px;
   margin: 0 auto;
-  padding: 0 32px;
+  padding: 0;
 }
 
 .divider {
   height: 1px;
   background: var(--border);
-  margin: 0 -32px;
+  margin: 0;
 }
 
 .categoryHeading {

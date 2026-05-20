@@ -2,28 +2,29 @@
 
 import React, { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { MenuData } from "@/data/menuData";
-import { fetchCompanyByTin, fetchMenuData, fetchTables, CompanyInfo } from "@/lib/api";
+import { MenuData, MenuItem } from "@/data/menuData";
+import { fetchCompanyByTin, fetchMenuData, CompanyInfo } from "@/lib/api";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import MenuSection from "@/components/MenuSection";
 import CartDrawer from "@/components/CartDrawer";
+import BottomNav from "@/components/BottomNav";
+import ItemDetailsPage from "@/components/ItemDetailsPage";
 import { useCart } from "@/context/CartContext";
 import styles from "./page.module.css";
 
 function MenuPage() {
   const searchParams = useSearchParams();
-  const tin = searchParams.get("tin") ?? "";
+  const tin        = searchParams.get("tin") ?? "";
   const branchCode = searchParams.get("bc") ?? "";
-  const tableParam = searchParams.get("table") ?? "";
-  // searchParams.get("it") — industryType, available for future use
+  const tableParam = searchParams.get("table") ?? "T18";
 
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
   const [data, setData] = useState<MenuData | null>(null);
-  const [tableValid, setTableValid] = useState<boolean | null>(null); // null = checking
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { totalCount } = useCart();
@@ -32,30 +33,22 @@ function MenuPage() {
     if (!tin || !branchCode) return;
     setLoading(true);
     setError(null);
-    setTableValid(null);
 
-    // Step 1: fetch company info by TIN
     fetchCompanyByTin(tin, branchCode)
       .then((info) => {
         setCompanyInfo(info);
-        const companyCode = String(info.companyCode);
+        const companyCode   = String(info.companyCode);
         const resolvedBranch = String(info.branch?.code ?? branchCode);
 
-        // Step 2: fetch menu + validate table in parallel
-        return Promise.all([
-          fetchMenuData(companyCode, resolvedBranch).then((menu) => {
+        return fetchMenuData(companyCode, resolvedBranch).then((menu) => {
             menu.companyName = info.brandName || info.companyName;
-            menu.branchName = info.branch?.name ?? branchCode;
+            menu.branchName  = info.branch?.name ?? branchCode;
             setData(menu);
-          }),
-          tableParam
-            ? fetchTables(companyCode, resolvedBranch).then(() => {
-              setTableValid(true); // skip validation for now, always valid
-            })
-            : Promise.resolve(setTableValid(true)),
-        ]);
+          });
       })
-      .catch((err) => setError(err.message))
+      .catch((err) => {
+        setError(err.message);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -73,10 +66,7 @@ function MenuPage() {
     const seen = new Set<string>();
     const result: string[] = [];
     for (const item of categoryItems) {
-      if (!seen.has(item.section)) {
-        seen.add(item.section);
-        result.push(item.section);
-      }
+      if (!seen.has(item.section)) { seen.add(item.section); result.push(item.section); }
     }
     return result;
   }, [categoryItems]);
@@ -103,7 +93,6 @@ function MenuPage() {
     setActiveSection(null);
   };
 
-  // Missing required params
   if (!tin || !branchCode) {
     return (
       <div className={styles.state}>
@@ -115,7 +104,6 @@ function MenuPage() {
     );
   }
 
-  // Loading
   if (loading) {
     return (
       <div className={styles.state}>
@@ -125,7 +113,6 @@ function MenuPage() {
     );
   }
 
-  // Error
   if (error) {
     return (
       <div className={styles.state}>
@@ -134,8 +121,6 @@ function MenuPage() {
       </div>
     );
   }
-
-  // Invalid table — skipped for now, always proceeds
 
   if (!data) return null;
 
@@ -169,7 +154,12 @@ function MenuPage() {
           )}
           <div className={styles.sections}>
             {Object.entries(groupedSections).map(([sectionName, items]) => (
-              <MenuSection key={sectionName} title={sectionName} items={items} />
+              <MenuSection
+                key={sectionName}
+                title={sectionName}
+                items={items}
+                onItemClick={(item) => setSelectedItem(item)}
+              />
             ))}
           </div>
         </div>
@@ -185,6 +175,16 @@ function MenuPage() {
         companyName={data.companyName}
         industryType={Number(searchParams.get("it") ?? 1992)}
       />
+      <BottomNav onCartClick={() => setIsCartOpen(true)} />
+
+      {/* Item detail modal — renders over the menu, no navigation */}
+      {selectedItem && (
+        <ItemDetailsPage
+          item={selectedItem}
+          companyName={data.companyName}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
     </main>
   );
 }

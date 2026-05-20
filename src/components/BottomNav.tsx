@@ -12,30 +12,18 @@ const BottomNav: React.FC<BottomNavProps> = ({ onCartClick }) => {
   const { totalCount } = useCart();
 
   return (
-    <div className={styles.container}>
-      <nav className={styles.nav}>
-        <button className={`${styles.item} ${styles.active}`}>
-          <span className={styles.icon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-            </svg>
-          </span>
-          <span className={styles.label}>Menu</span>
-        </button>
-        <button className={styles.item} onClick={onCartClick}>
-          <span className={styles.icon}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-            </svg>
-          </span>
-          <span className={styles.label}>Cart ({totalCount})</span>
-        </button>
-      </nav>
+    <div className={styles.container} onClick={onCartClick}>
+      <button className={styles.cartBar} aria-label="Open Cart">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+          <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+        </svg>
+        <span className={styles.ctaLabel}>
+          View Cart {totalCount > 0 && `(${totalCount})`}
+        </span>
+      </button>
     </div>
   );
 };
 
 export default BottomNav;
-

@@ -8,6 +8,7 @@ import {
   generateTransactionId,
   fetchPaymentOptions,
   authorizePayment,
+  checkTransactionResolution,
   saveVoucher,
   LineItemResult,
   PaymentOption,
@@ -24,47 +25,56 @@ interface CartDrawerProps {
   industryType?: number;
 }
 
-type Step = "cart" | "form" | "processing" | "payment" | "otp" | "ussd_wait" | "done";
+// Steps: cart → checkout (form + payment options) → otp | ussd_wait | card_wait → done
+type Step = "cart" | "checkout" | "paying" | "otp" | "ussd_wait" | "card_wait" | "done";
 
-const OPERATION_OTP = 5;
-const OPERATION_USSD_PUSH = 10;
+const PHONE_REGEX = /^0[79]\d{8}$/;
 
 const CartDrawer: React.FC<CartDrawerProps> = ({
   isOpen, onClose, table, companyCode, branchCode, branchName, companyName, industryType = 1992,
 }) => {
   const { cart, updateQuantity, totalPrice, clearCart } = useCart();
 
-  // Calculation
-  const [calcResult, setCalcResult] = useState<LineItemResult | null>(null);
+  // ── Calculation ────────────────────────────────────────────────────────────
+  const [calcResult, setCalcResult]   = useState<LineItemResult | null>(null);
   const [calculating, setCalculating] = useState(false);
-  const [dirty, setDirty] = useState(false);
-  const lastCalcKey = useRef<string>("");
+  const [dirty, setDirty]             = useState(false);
+  const lastCalcKey                   = useRef("");
   const cartKey = cart.map((i) => `${i.id}:${i.quantity}`).join(",");
 
-  // Flow
-  const [step, setStep] = useState<Step>("cart");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [formError, setFormError] = useState<string | null>(null);
-  const [transactionId, setTransactionId] = useState<string | null>(null);
-  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
-  const [selectedOption, setSelectedOption] = useState<PaymentOption | null>(null);
-  const [authorizing, setAuthorizing] = useState(false);
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authResult, setAuthResult] = useState<{ type: string; isAsyncMode: string; transactionReference: string | null } | null>(null);
+  // ── Checkout form ──────────────────────────────────────────────────────────
+  const [step, setStep]                     = useState<Step>("cart");
+  const [name, setName]                     = useState("");
+  const [phone, setPhone]                   = useState("");
+  const [formError, setFormError]           = useState<string | null>(null);
 
-  // OTP step
-  const [otp, setOtp] = useState("");
-  const [saving, setSaving] = useState(false);
+  // Payment options — loaded automatically when phone is valid
+  const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
+  const [selectedOption, setSelectedOption] = useState<PaymentOption | null>(null);
+
+  // Transaction + auth
+  const [transactionId, setTransactionId]   = useState<string | null>(null);
+  const [authorizing, setAuthorizing]       = useState(false);
+  const [authError, setAuthError]           = useState<string | null>(null);
+  const [authResult, setAuthResult]         = useState<{
+    type: string; isAsyncMode: string; transactionReference: string | null; redirectUrl?: string;
+  } | null>(null);
+
+  // OTP
+  const [otp, setOtp]           = useState("");
+  const [saving, setSaving]     = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // ── Calculation ────────────────────────────────────────────────────────────
+  // Card polling
+  const [polling, setPolling]       = useState(false);
+  const [pollError, setPollError]   = useState<string | null>(null);
+  const pollTimerRef                = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Calculation effects ────────────────────────────────────────────────────
   const runCalculation = () => {
     if (!companyCode || !branchCode || cart.length === 0) return;
-    setCalculating(true);
-    setCalcResult(null);
-    setDirty(false);
+    setCalculating(true); setCalcResult(null); setDirty(false);
     lastCalcKey.current = cartKey;
     calculateLineItems(companyCode, Number(branchCode),
       cart.map((i) => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity }))
@@ -82,84 +92,98 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     if (cartKey !== lastCalcKey.current) { setDirty(true); setCalcResult(null); }
   }, [cartKey]);
 
+  // Reset everything on close
   useEffect(() => {
     if (!isOpen) {
       setDirty(false); setCalcResult(null); setStep("cart");
       setName(""); setPhone(""); setFormError(null);
-      setTransactionId(null); setPaymentOptions([]); setSelectedOption(null);
-      setAuthorizing(false); setAuthError(null); setAuthResult(null);
+      setPaymentOptions([]); setLoadingOptions(false); setSelectedOption(null);
+      setTransactionId(null); setAuthorizing(false); setAuthError(null); setAuthResult(null);
       setOtp(""); setSaving(false); setSaveError(null);
+      setPolling(false); setPollError(null);
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
       lastCalcKey.current = "";
     }
   }, [isOpen]);
 
-  const grandTotal = calcResult?.grandTotal ?? null;
-  const extraCharges = calcResult?.extraCharge ?? {};
-  const amount = grandTotal ?? totalPrice;
-
-  // ── Form submit ────────────────────────────────────────────────────────────
-
-  const handleFormSubmit = async () => {
-    if (!name.trim()) { setFormError("Please enter your name."); return; }
-    if (!/^0[79]\d{8}$/.test(phone.trim())) {
-      setFormError("Enter a valid Ethiopian phone number (e.g. 0912345678).");
+  // ── Auto-fetch payment options when phone is valid ─────────────────────────
+  useEffect(() => {
+    if (step !== "checkout") return;
+    if (!PHONE_REGEX.test(phone.trim())) {
+      setPaymentOptions([]);
+      setSelectedOption(null);
       return;
     }
-    setFormError(null);
-    setStep("processing");
-    try {
-      const [txId, options] = await Promise.all([
-        generateTransactionId(phone.trim()),
-        fetchPaymentOptions(phone.trim(), companyCode!, branchCode!),
-      ]);
-      setTransactionId(txId);
-      setPaymentOptions(options);
-      setStep("payment");
-    } catch (err: unknown) {
-      setFormError(err instanceof Error ? err.message : "Something went wrong.");
-      setStep("form");
-    }
-  };
+    setLoadingOptions(true);
+    setSelectedOption(null);
+    fetchPaymentOptions(phone.trim(), companyCode!, branchCode!)
+      .then(setPaymentOptions)
+      .catch(() => setPaymentOptions([]))
+      .finally(() => setLoadingOptions(false));
+  }, [phone, step]);
 
-  // ── Authorize payment ──────────────────────────────────────────────────────
+  const grandTotal   = calcResult?.grandTotal ?? null;
+  const extraCharges = calcResult?.extraCharge ?? {};
+  const amount       = grandTotal ?? totalPrice;
 
+  // ── Pay button: generate transaction + authorize ───────────────────────────
   const handlePay = async () => {
-    if (!selectedOption || !transactionId || !companyCode || !branchCode) return;
+    if (!name.trim())                        { setFormError("Please enter your name."); return; }
+    if (!PHONE_REGEX.test(phone.trim()))     { setFormError("Enter a valid Ethiopian phone number."); return; }
+    if (!selectedOption)                     { setFormError("Please select a payment method."); return; }
+    if (!companyCode || !branchCode)         return;
+
+    setFormError(null);
     setAuthorizing(true);
     setAuthError(null);
+
     try {
-      const result = await authorizePayment({
+      // Generate transaction ID first, then authorize with the real ID
+      const txId = await generateTransactionId(phone.trim());
+      setTransactionId(txId);
+
+      const authRes = await authorizePayment({
         userMobileNumber: phone.trim(),
         operationMode: selectedOption.operationMode,
         supplierConsigneeId: companyCode,
         supplierConsigneeUnit: Number(branchCode),
         paymentProcessorConsigneeId: selectedOption.paymentProcessorConsigneeId,
         paymentProcessorConsigneeUnit: selectedOption.paymentProcessorConsigneeUnit,
-        transactionId: transactionId,
+        transactionId: txId,
         amount,
-        additionalParameters: { referenceNumber: "" },
+        additionalParameters: { referenceNumber: "Optional" },
       });
 
-      if (!result.isSuccessful) {
-        throw new Error(result.errorMessages?.join(", ") ?? "Authorization failed");
+      if (!authRes.isSuccessful) {
+        throw new Error(authRes.errorMessages?.join(", ") ?? "Authorization failed");
       }
 
       const info = {
-        type: result.additionalParameters?.type ?? "otp",
-        isAsyncMode: result.additionalParameters?.isAsyncMode ?? "false",
-        transactionReference: result.transactionReference,
+        type: authRes.additionalParameters?.type ?? "otp",
+        isAsyncMode: authRes.additionalParameters?.isAsyncMode ?? "false",
+        transactionReference: authRes.transactionReference,
+        redirectUrl: authRes.additionalParameters?.RedirectUrl ?? authRes.additionalParameters?.redirectUrl,
       };
       setAuthResult(info);
 
-      if (selectedOption.operationMode === OPERATION_OTP) {
-        setStep("otp");
-      } else if (selectedOption.operationMode === OPERATION_USSD_PUSH) {
+      const payType = info.type.toLowerCase();
+
+      if (payType === "card") {
+        // Card — open payment gateway in new tab, then start polling
+        if (info.redirectUrl) {
+          window.open(info.redirectUrl, "_blank", "noopener,noreferrer");
+          setStep("card_wait");
+          startPolling(txId, info);
+        } else {
+          throw new Error("Card payment redirect URL not found.");
+        }
+      } else if (payType === "ussdpush" || info.isAsyncMode === "true") {
+        // USSD Push — save voucher immediately and show waiting screen
         setStep("ussd_wait");
-        // USSD is async — save voucher immediately, payment confirmed on device
-        await handleSaveVoucher("", info);
+        await handleSaveVoucher("", txId, info);
       } else {
-        // Card / gateway — save and go to done
-        await handleSaveVoucher("", info);
+        // OTP — show OTP input
+        setStep("otp");
       }
     } catch (err: unknown) {
       setAuthError(err instanceof Error ? err.message : "Payment failed.");
@@ -168,102 +192,143 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     }
   };
 
-  // ── Save voucher ───────────────────────────────────────────────────────────
+  // ── Card polling ──────────────────────────────────────────────────────────
+  const startPolling = (
+    txId: string,
+    info: { type: string; isAsyncMode: string; transactionReference: string | null }
+  ) => {
+    if (!selectedOption || !companyCode || !branchCode) return;
+    setPolling(true);
+    setPollError(null);
 
+    const poll = async () => {
+      try {
+        const result = await checkTransactionResolution({
+          userMobileNumber: phone.trim(),
+          operationMode: selectedOption.operationMode,
+          supplierConsigneeId: companyCode,
+          supplierConsigneeUnit: Number(branchCode),
+          paymentProcessorConsigneeId: selectedOption.paymentProcessorConsigneeId,
+          paymentProcessorConsigneeUnit: selectedOption.paymentProcessorConsigneeUnit,
+          transactionId: txId,
+          amount: calcResult?.grandTotal ?? amount,
+          additionalParameters: { referenceNumber: "Optional" },
+        });
+
+        if (result.isSuccessful) {
+          setPolling(false);
+          // Save voucher with the resolved transaction reference
+          await handleSaveVoucher("", txId, {
+            ...info,
+            transactionReference: result.transactionReference,
+          });
+        } else {
+          // Not resolved yet — poll again in 3 seconds
+          pollTimerRef.current = setTimeout(poll, 3000);
+        }
+      } catch {
+        // Network error — retry in 5 seconds
+        pollTimerRef.current = setTimeout(poll, 5000);
+      }
+    };
+
+    // Start first poll after 3 seconds (give user time to complete payment)
+    pollTimerRef.current = setTimeout(poll, 3000);
+  };
+
+  // ── Save voucher ───────────────────────────────────────────────────────────
   const handleSaveVoucher = async (
     pin: string,
+    txId?: string,
     info?: { type: string; isAsyncMode: string; transactionReference: string | null }
   ) => {
-    if (!companyCode || !branchCode || !transactionId || !selectedOption) return;
-    const resolvedInfo = info ?? authResult;
-    if (!resolvedInfo) return;
+    if (!companyCode || !branchCode || !selectedOption) return;
+    const resolvedTxId   = txId ?? transactionId;
+    const resolvedInfo   = info ?? authResult;
+    if (!resolvedTxId || !resolvedInfo) return;
 
-    setSaving(true);
-    setSaveError(null);
+    setSaving(true); setSaveError(null);
 
-    try {
-      const authReq = {
-        paymentType: null, // Added to match payload object explicitly
-        userMobileNumber: phone.trim(),
-        operationMode: selectedOption.operationMode,
-        supplierConsigneeId: companyCode,
-        supplierConsigneeUnit: Number(branchCode),
-        paymentProcessorConsigneeId: selectedOption.paymentProcessorConsigneeId,
-        paymentProcessorConsigneeUnit: selectedOption.paymentProcessorConsigneeUnit,
-        amount: calcResult?.grandTotal ?? amount, // use server-computed total
-        transactionId: transactionId,
-        additionalParameters: { referenceNumber: "Optional" }, // Aligned text representation
-        pin: pin || "", // Ensures a standard string value fallback instead of optional spreading
-      };
-
-      const result = await saveVoucher({
+    try {      const result = await saveVoucher({
         code: phone.trim(),
+        notifyInvitee: false,
+        inviteeName: null,
+        inviteePhone: null,
+        buyerTin: null,
+        buyerCompanyName: null,
         companyCode,
         branchCode: Number(branchCode),
         industryType,
         lineItems: cart.map((i) => {
-          // Use the unitAmount from the server's calculation response to avoid price mismatch
           const calcItem = calcResult?.lineItems.find((l) => l.article === Number(i.id));
           return {
             name: i.name,
             article: Number(i.id),
             unitAmount: calcItem?.unitAmount ?? i.price,
             quantity: i.quantity,
+            parent: null,
             uom: 0,
-            note: "", // Replaced specialFlag: null
+            note: "",
           };
         }),
         paymentMethod: selectedOption.paymentProcessorUnitName,
-        transactionReference: resolvedInfo.transactionReference ?? transactionId, // Removed promoConsigneeUnit right above
+        transactionReference: resolvedInfo.transactionReference ?? "",
         paymentInfo: {
           type: resolvedInfo.type,
           isAsyncMode: resolvedInfo.isAsyncMode,
-          paymentTransactionRequest: authReq,
+          paymentType: null,
+          paymentTransactionRequest: {
+            userMobileNumber: phone.trim(),
+            operationMode: selectedOption.operationMode,
+            supplierConsigneeId: companyCode,
+            supplierConsigneeUnit: Number(branchCode),
+            paymentProcessorConsigneeId: selectedOption.paymentProcessorConsigneeId,
+            paymentProcessorConsigneeUnit: selectedOption.paymentProcessorConsigneeUnit,
+            transactionId: resolvedTxId,
+            amount: calcResult?.grandTotal ?? amount,
+            additionalParameters: { referenceNumber: "Optional" },
+            pin: pin || "",
+          },
         },
-        latitude: 0.0,
-        longitude: 0.0,
-        platform: "web", // Lowercase "web" to perfectly match your target payload example
-
-        // Injected new schema layout blocks below
+        latitude: 0,
+        longitude: 0,
+        platform: "Web",
+        deviceId: "",
         promoDetail: null,
-        servingMethod: {
-          branchCode: Number(branchCode),
-          branchName: branchName || "Unknown Branch",
-          deliveryMethod: null,
-          address: null,
-          scheduleDateTime: null,
-          servingMethodType: "IN_HOUSE_DINING",
-          specificAddressName: null,
-          selectedTableName: table || "Unknown Table",
-        },
-        ActivityLog: {
-          code: phone.trim(),
-          target: "",
-          platform: "Web",
-          latitude: 0.0,
-          longitude: 0.0,
-          appVersion: "2.0.9+89",
-        },
         onSuccess: {
-          firstName: "Markos", // Replace with user context state if available
+          firstName: name.trim(),
           company: companyName || "",
-          branch: branchName || "Unknown Branch",
+          branch: branchName || "",
           nightCount: null,
           seats: null,
           movieName: null,
           movieDimension: null,
           hallName: null,
-          time: new Date().toLocaleTimeString("en-US", { hour12: false }), // Dynamic 24h string matching structure
-          date: new Date().toISOString(), // Standard dynamic format matching ISO string schema target
+          time: null,
+          date: null,
           picture: null,
           scheduleDateTime: null,
         },
+        servingMethod: {
+          address: null,
+          scheduleDateTime: null,
+          servingMethodType: "IN_HOUSE_DINING",
+          specificAddressName: null,
+          specialRequest: null,
+          selectedTableName: table || null,
+        },
+        deliveryOrderRequest: null,
+        ActivityLog: {
+          platform: "Web",
+          latitude: 0,
+          longitude: 0,
+          appVersion: "2.1.7+145",
+          code: phone.trim(),
+          langLocale: "en",
+        },
       });
 
-      if (!result.isSuccessful) {
-        throw new Error(result.errorMessages?.join(", ") ?? "Failed to save order");
-      }
-
+      if (!result.isSuccessful) throw new Error(result.errorMessages?.join(", ") ?? "Failed to save order");
       setStep("done");
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : "Failed to save order.");
@@ -275,9 +340,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
   if (!isOpen) return null;
 
   const stepTitle: Record<Step, string> = {
-    cart: "Your Cart", form: "Your Details", processing: "Your Details",
-    payment: "Select Payment", otp: "Enter OTP",
-    ussd_wait: "Confirm on Phone", done: "Order Placed",
+    cart: "Your Cart", checkout: "Checkout",
+    paying: "Checkout", otp: "Enter OTP",
+    ussd_wait: "Confirm on Phone", card_wait: "Complete Payment",
+    done: "Order Placed",
   };
 
   return (
@@ -293,7 +359,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           <button className={styles.closeBtn} onClick={onClose}>×</button>
         </div>
 
-        {/* ── cart ── */}
+        {/* ── CART ── */}
         {step === "cart" && (
           <>
             <div className={styles.items}>
@@ -316,9 +382,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             {cart.length > 0 && (
               <div className={styles.footer}>
                 {calcResult && Object.entries(extraCharges).map(([label, val]) => (
-                  <div key={label} className={styles.chargeRow}>
-                    <span>{label}</span><span>ETB {Number(val).toFixed(2)}</span>
-                  </div>
+                  <div key={label} className={styles.chargeRow}><span>{label}</span><span>ETB {Number(val).toFixed(2)}</span></div>
                 ))}
                 <div className={styles.totalRow}>
                   <span>Total</span>
@@ -332,7 +396,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   <button className={styles.updateBtn} onClick={runCalculation}>Update Cart</button>
                 ) : (
                   <button className={styles.checkoutBtn} disabled={calculating}
-                    onClick={() => { setFormError(null); setStep("form"); }}>
+                    onClick={() => { setFormError(null); setStep("checkout"); }}>
                     {calculating ? "Calculating..." : "Checkout"}
                   </button>
                 )}
@@ -342,66 +406,73 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           </>
         )}
 
-        {/* ── form / processing ── */}
-        {(step === "form" || step === "processing") && (
+        {/* ── CHECKOUT: name + phone + payment options (all on one screen) ── */}
+        {step === "checkout" && (
           <div className={styles.formBody}>
-            <p className={styles.formHint}>We need your details to process the order for <strong>{table}</strong>.</p>
+            <p className={styles.formHint}>Enter your details and choose a payment method.</p>
+
             <div className={styles.field}>
               <label className={styles.label}>Full Name</label>
               <input className={styles.input} type="text" placeholder="e.g. Abebe Kebede"
-                value="Ma" onChange={(e) => setName(e.target.value)} disabled={step === "processing"} />
+                value={name} onChange={(e) => setName(e.target.value)} />
             </div>
+
             <div className={styles.field}>
               <label className={styles.label}>Phone Number</label>
               <input className={styles.input} type="tel" placeholder="e.g. 0912345678"
-                value="0912141914" onChange={(e) => setPhone(e.target.value)} disabled={step === "processing"} />
+                value={phone} onChange={(e) => setPhone(e.target.value)} />
             </div>
-            {formError && <p className={styles.formError}>{formError}</p>}
-            <div className={styles.formActions}>
-              <button className={styles.checkoutBtn} onClick={handleFormSubmit} disabled={step === "processing"}>
-                {step === "processing" ? <span className={styles.totalLoading}><span className={styles.totalSpinner} style={{ borderTopColor: "white" }} />Processing...</span> : "Continue to Payment"}
-              </button>
-              <button className={styles.clearBtn} onClick={() => setStep("cart")} disabled={step === "processing"}>Back to Cart</button>
-            </div>
-          </div>
-        )}
 
-        {/* ── payment selection ── */}
-        {step === "payment" && (
-          <div className={styles.formBody}>
-            <p className={styles.formHint}>Choose how you'd like to pay.</p>
-            <div className={styles.paymentList}>
-              {paymentOptions.map((opt, idx) => (
-                <button key={idx}
-                  className={`${styles.paymentOption} ${selectedOption === opt ? styles.paymentSelected : ""}`}
-                  onClick={() => setSelectedOption(opt)}>
-                  <img src={opt.paymentProcessorUnitImage} alt={opt.paymentProcessorUnitName} className={styles.paymentLogo} />
-                  <div className={styles.paymentInfo}>
-                    <span className={styles.paymentName}>{opt.paymentProcessorUnitName}</span>
-                    <span className={styles.paymentProcessor}>{opt.paymentProcessorName}</span>
-                    {opt.accountNo !== opt.code && <span className={styles.paymentAccount}>{opt.accountNo}</span>}
-                  </div>
-                  <div className={`${styles.paymentRadio} ${selectedOption === opt ? styles.paymentRadioSelected : ""}`} />
-                </button>
-              ))}
-            </div>
+            {/* Payment options appear automatically once phone is valid */}
+            {loadingOptions && (
+              <div className={styles.totalLoading} style={{ justifyContent: "center", padding: "8px 0" }}>
+                <div className={styles.totalSpinner} />
+                <span className={styles.totalCalculating}>Loading payment options...</span>
+              </div>
+            )}
+
+            {paymentOptions.length > 0 && (
+              <>
+                <p className={styles.label}>Payment Options</p>
+                <div className={styles.paymentList}>
+                {paymentOptions.map((opt, idx) => (
+                  <button key={idx}
+                    className={`${styles.paymentOption} ${selectedOption === opt ? styles.paymentSelected : ""}`}
+                    onClick={() => setSelectedOption(opt)}>
+                    <img src={opt.paymentProcessorUnitImage} alt={opt.paymentProcessorUnitName} className={styles.paymentLogo} />
+                    <div className={styles.paymentInfo}>
+                      <span className={styles.paymentName}>{opt.paymentProcessorUnitName}</span>
+                      <span className={styles.paymentProcessor}>{opt.paymentProcessorName}</span>
+                      {opt.accountNo !== opt.code && <span className={styles.paymentAccount}>{opt.accountNo}</span>}
+                    </div>
+                    <div className={`${styles.paymentRadio} ${selectedOption === opt ? styles.paymentRadioSelected : ""}`} />
+                  </button>
+                ))}
+                </div>
+              </>
+            )}
+
+            {formError && <p className={styles.formError}>{formError}</p>}
             {authError && <p className={styles.formError}>{authError}</p>}
+
             <div className={styles.formActions}>
-              <button className={styles.checkoutBtn} disabled={!selectedOption || authorizing} onClick={handlePay}>
+              <button className={styles.checkoutBtn}
+                disabled={!selectedOption || authorizing || loadingOptions}
+                onClick={handlePay}>
                 {authorizing
-                  ? <span className={styles.totalLoading}><span className={styles.totalSpinner} style={{ borderTopColor: "white" }} />Authorizing...</span>
+                  ? <span className={styles.totalLoading}><span className={styles.totalSpinner} style={{ borderTopColor: "white" }} />Processing...</span>
                   : `Pay ETB ${amount.toFixed(2)}`}
               </button>
-              <button className={styles.clearBtn} onClick={() => setStep("form")} disabled={authorizing}>Back</button>
+              <button className={styles.clearBtn} onClick={() => setStep("cart")} disabled={authorizing}>Back to Cart</button>
             </div>
           </div>
         )}
 
-        {/* ── OTP entry ── */}
+        {/* ── OTP ── */}
         {step === "otp" && (
           <div className={styles.formBody}>
             <p className={styles.formHint}>
-              An OTP has been sent to <strong>{phone}</strong> via {selectedOption?.paymentProcessorUnitName}. Enter it below to confirm your payment.
+              An OTP has been sent to <strong>{phone}</strong> via {selectedOption?.paymentProcessorUnitName}. Enter it below to confirm.
             </p>
             <div className={styles.field}>
               <label className={styles.label}>OTP Code</label>
@@ -417,7 +488,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
                   ? <span className={styles.totalLoading}><span className={styles.totalSpinner} style={{ borderTopColor: "white" }} />Confirming...</span>
                   : "Confirm Payment"}
               </button>
-              <button className={styles.clearBtn} onClick={() => setStep("payment")} disabled={saving}>Back</button>
+              <button className={styles.clearBtn} onClick={() => setStep("checkout")} disabled={saving}>Back</button>
             </div>
           </div>
         )}
@@ -428,21 +499,58 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             {saving ? (
               <>
                 <div className={styles.totalSpinner} style={{ width: 48, height: 48, borderWidth: 4 }} />
-                <h3 className={styles.doneTitle}>Waiting for confirmation...</h3>
-                <p className={styles.doneText}>Please confirm the payment on your phone when prompted.</p>
+                <h3 className={styles.doneTitle}>Check your phone</h3>
+                <p className={styles.doneText}>
+                  A USSD push has been sent to <strong>{phone}</strong>.<br />
+                  Approve the payment on your phone to complete the order.
+                </p>
               </>
             ) : saveError ? (
               <>
                 <div className={styles.doneIcon} style={{ background: "#fdecea", color: "#c62828" }}>✕</div>
                 <h3 className={styles.doneTitle}>Payment Failed</h3>
                 <p className={styles.formError}>{saveError}</p>
-                <button className={styles.checkoutBtn} onClick={() => setStep("payment")}>Try Again</button>
+                <button className={styles.checkoutBtn} onClick={() => setStep("checkout")}>Try Again</button>
               </>
             ) : null}
           </div>
         )}
 
-        {/* ── done ── */}
+        {/* ── CARD waiting ── */}
+        {step === "card_wait" && (
+          <div className={styles.doneBody}>
+            {saving ? (
+              <>
+                <div className={styles.totalSpinner} style={{ width: 48, height: 48, borderWidth: 4 }} />
+                <h3 className={styles.doneTitle}>Saving your order...</h3>
+                <p className={styles.doneText}>Please wait.</p>
+              </>
+            ) : saveError ? (
+              <>
+                <div className={styles.doneIcon} style={{ background: "#fdecea", color: "#c62828" }}>✕</div>
+                <h3 className={styles.doneTitle}>Payment Failed</h3>
+                <p className={styles.formError}>{saveError}</p>
+                <button className={styles.checkoutBtn} onClick={() => setStep("checkout")}>Try Again</button>
+              </>
+            ) : (
+              <>
+                <div className={styles.totalSpinner} style={{ width: 48, height: 48, borderWidth: 4 }} />
+                <h3 className={styles.doneTitle}>Complete payment</h3>
+                <p className={styles.doneText}>
+                  A payment page has opened in a new tab.<br />
+                  Complete your card payment there.this screen will update automatically.
+                </p>
+                {pollError && <p className={styles.formError}>{pollError}</p>}
+                <button className={styles.clearBtn} onClick={() => {
+                  if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+                  setStep("checkout");
+                }}>Cancel</button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── DONE ── */}
         {step === "done" && (
           <div className={styles.doneBody}>
             <div className={styles.doneIcon}>✓</div>

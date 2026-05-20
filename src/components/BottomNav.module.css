@@ -1,51 +1,59 @@
 .container {
   position: fixed;
-  bottom: 24px;
+  bottom: 16px;
   left: 0;
   right: 0;
   display: flex;
   justify-content: center;
-  padding: 0 16px;
+  pointer-events: none; /* Let clicks pass through the spacing container */
   z-index: 100;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.nav {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 40px;
-  width: 100%;
-  max-width: 400px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+@keyframes slideUp {
+  from {
+    transform: translateY(100px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
-.item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px;
-  border-radius: 30px;
-  color: var(--secondary-foreground);
-  transition: all 0.2s ease;
-}
-
-.item.active {
-  background: var(--accent);
-  color: white;
-}
-
-.icon {
+.cartBar {
+  pointer-events: auto; /* Re-enable clicks on the button itself */
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-width: 110px;
+  max-width: 140px;
+  height: 36px;
+  padding: 0 12px;
+  background: linear-gradient(135deg, var(--accent, #e63946), #b21e29);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 18px;
+  color: white;
+  box-shadow: 0 4px 16px rgba(230, 57, 70, 0.25);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  cursor: pointer;
 }
 
-.label {
-  font-size: 10px;
-  font-weight: 600;
+.cartBar:hover {
+  transform: scale(1.04);
+  box-shadow: 0 6px 20px rgba(230, 57, 70, 0.35);
 }
 
+.cartBar:active {
+  transform: scale(0.96);
+}
+
+.ctaLabel {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}

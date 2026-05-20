@@ -1,20 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getProxyHeaders } from "@/lib/proxyHeaders";
 
 const BASE = "https://v7-hulubeje.cnetcommerce.com/api";
-
-const upstreamHeaders: Record<string, string> = {
-  "Content-Type": "application/json",
-  "X-Metadata": JSON.stringify({
-    platform: "Android",
-    latitude: 37.4219983,
-    longitude: -122.084,
-    appVersion: "2.1.7+145",
-    code: "0000000000",
-    langLocale: "en",
-  }),
-  "x-api-key": process.env.HULUBEJE_API_KEY ?? "",
-  Authorization: `Bearer ${process.env.HULUBEJE_TOKEN ?? ""}`,
-};
 
 export async function GET(
   _req: NextRequest,
@@ -24,12 +11,9 @@ export async function GET(
   const url = `${BASE}/tablereservation/get?company=${company}&branch=${branch}`;
 
   try {
-    const upstream = await fetch(url, {
-      headers: upstreamHeaders,
-      cache: "no-store",
-    });
-
-    const body = await upstream.json();
+    const headers  = await getProxyHeaders();
+    const upstream = await fetch(url, { headers, cache: "no-store" });
+    const body     = await upstream.json();
 
     if (!upstream.ok) {
       return NextResponse.json(

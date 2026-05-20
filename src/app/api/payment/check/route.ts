@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const body    = await req.json();
     const headers = await getProxyHeaders();
 
-    const upstream = await fetch(`${BASE}/lineitem/calculate`, {
+    const upstream = await fetch(`${BASE}/payment/checktransactionresolution`, {
       method: "POST",
       headers,
       body: JSON.stringify(body),

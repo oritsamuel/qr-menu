@@ -10,27 +10,8 @@
 }
 
 .items {
-  display: flex;
-  flex-direction: row;
-  gap: 20px;
-  overflow-x: auto;
-  /* extend to viewport edges so scroll isn't clipped */
-  padding-left: 32px;
-  padding-right: 32px;
-  margin-left: -32px;
-  margin-right: -32px;
-  padding-bottom: 12px;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(0,0,0,0.15) transparent;
-  /* ensure the row itself can scroll */
-  -webkit-overflow-scrolling: touch;
-}
-
-.items::-webkit-scrollbar {
-  height: 4px;
-}
-
-.items::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
-  border-radius: 4px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  justify-content: center;
 }

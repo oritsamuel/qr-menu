@@ -12,6 +12,7 @@ import BottomNav from "@/components/BottomNav";
 import ItemDetailsPage from "@/components/ItemDetailsPage";
 import SearchBar from "@/components/SearchBar";
 import FilterDrawer, { FilterSettings } from "@/components/FilterDrawer";
+import OrderHistory from "@/components/OrderHistory";
 import { useCart } from "@/context/CartContext";
 import styles from "./page.module.css";
 
@@ -19,9 +20,11 @@ function MenuPage() {
   const searchParams = useSearchParams();
   const tin        = searchParams.get("tin") ?? "";
   const branchCode = searchParams.get("bc") ?? "";
-  const tableParam = searchParams.get("table") ?? "T18";
+  const tableParam = searchParams.get("table") ?? "";
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen]       = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [lastOrderPhone, setLastOrderPhone] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -169,6 +172,7 @@ function MenuPage() {
         table={tableParam || undefined}
         cartCount={totalCount}
         onCartClick={() => setIsCartOpen(true)}
+        onHistoryClick={lastOrderPhone ? () => setIsHistoryOpen(true) : undefined}
       />
 
       <div className={styles.content}>
@@ -215,6 +219,7 @@ function MenuPage() {
         branchName={data.branchName}
         companyName={data.companyName}
         industryType={Number(searchParams.get("it") ?? 1992)}
+        onOrderComplete={(phone) => setLastOrderPhone(phone)}
       />
 
       <FilterDrawer
@@ -227,11 +232,19 @@ function MenuPage() {
 
       <BottomNav onCartClick={() => setIsCartOpen(true)} />
 
+      <OrderHistory
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        phone={lastOrderPhone ?? ""}
+      />
+
       {/* Item detail modal — renders over the menu, no navigation */}
       {selectedItem && (
         <ItemDetailsPage
           item={selectedItem}
           companyName={data.companyName}
+          companyCode={companyInfo ? String(companyInfo.companyCode) : undefined}
+          branchCode={companyInfo?.branch ? String(companyInfo.branch.code) : branchCode}
           onClose={() => setSelectedItem(null)}
         />
       )}

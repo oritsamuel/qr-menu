@@ -1,23 +1,19 @@
 "use client";
- 
+
 import React, { useState, useMemo, use, useEffect } from "react";
-import { MenuData } from "@/data/menuData";
+import { MenuData, MenuItem } from "@/data/menuData";
 import { fetchCompanyByTin, fetchMenuData, CompanyInfo } from "@/lib/api";
 import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import MenuSection from "@/components/MenuSection";
 import CartDrawer from "@/components/CartDrawer";
-<<<<<<< HEAD
-=======
 import BottomNav from "@/components/BottomNav";
 import ItemDetailsPage from "@/components/ItemDetailsPage";
 import SearchBar from "@/components/SearchBar";
 import FilterDrawer, { FilterSettings } from "@/components/FilterDrawer";
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
 import { useCart } from "@/context/CartContext";
 import styles from "./page.module.css";
 
-// URL params: [company] = TIN, [branch] = branchCode
 function MenuPageInner({
   params,
 }: {
@@ -25,33 +21,29 @@ function MenuPageInner({
 }) {
   const { company: tin, branch: branchCode } = use(params);
 
-  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen]         = useState(false);
+  const [selectedItem, setSelectedItem]     = useState<MenuItem | null>(null);
   const [activeCategory, setActiveCategory] = useState("all");
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
-  const [data, setData] = useState<MenuData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const [filters, setFilters] = useState<FilterSettings>({
-    sortBy: "default",
-  });
+  const [activeSection, setActiveSection]   = useState<string | null>(null);
+  const [companyInfo, setCompanyInfo]       = useState<CompanyInfo | null>(null);
+  const [data, setData]                     = useState<MenuData | null>(null);
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState<string | null>(null);
+  const [searchQuery, setSearchQuery]       = useState("");
+  const [isFilterOpen, setIsFilterOpen]     = useState(false);
+  const [filters, setFilters]               = useState<FilterSettings>({ sortBy: "default" });
 
   const { totalCount } = useCart();
 
   const loadAll = () => {
     setLoading(true);
     setError(null);
-
-    // Step 1: fetch company info by TIN
     fetchCompanyByTin(tin, branchCode)
       .then((info) => {
         setCompanyInfo(info);
-        // Step 2: fetch products using the real companyCode + branchCode
         return fetchMenuData(String(info.companyCode), branchCode).then((menu) => {
           menu.companyName = info.brandName || info.companyName;
-          menu.branchName = info.branch?.name ?? branchCode;
+          menu.branchName  = info.branch?.name ?? branchCode;
           setData(menu);
         });
       })
@@ -59,52 +51,37 @@ function MenuPageInner({
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => {
-    loadAll();
-  }, [tin, branchCode]);
+  useEffect(() => { loadAll(); }, [tin, branchCode]);
 
   const categoryItems = useMemo(() => {
     if (!data) return [];
     let items = [...data.items];
 
-    // 1. Filter by category
     if (activeCategory !== "all") {
       items = items.filter((item) => item.category === activeCategory);
     }
 
-    // 2. Filter by search query
     if (searchQuery.trim() !== "") {
       const q = searchQuery.toLowerCase().trim();
-      items = items.filter(
-        (item) =>
-          item.name.toLowerCase().includes(q) ||
-          (item.description && item.description.toLowerCase().includes(q))
+      items = items.filter((item) =>
+        item.name.toLowerCase().includes(q) ||
+        (item.description && item.description.toLowerCase().includes(q))
       );
     }
 
-    // 3. Sort by settings
-    if (filters.sortBy === "price-asc") {
-      items.sort((a, b) => a.price - b.price);
-    } else if (filters.sortBy === "price-desc") {
-      items.sort((a, b) => b.price - a.price);
-    } else if (filters.sortBy === "name-asc") {
-      items.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (filters.sortBy === "name-desc") {
-      items.sort((a, b) => b.name.localeCompare(a.name));
-    }
+    if (filters.sortBy === "price-asc")       items.sort((a, b) => a.price - b.price);
+    else if (filters.sortBy === "price-desc") items.sort((a, b) => b.price - a.price);
+    else if (filters.sortBy === "name-asc")   items.sort((a, b) => a.name.localeCompare(b.name));
+    else if (filters.sortBy === "name-desc")  items.sort((a, b) => b.name.localeCompare(a.name));
 
     return items;
   }, [activeCategory, data, searchQuery, filters]);
-
 
   const sections = useMemo(() => {
     const seen = new Set<string>();
     const result: string[] = [];
     for (const item of categoryItems) {
-      if (!seen.has(item.section)) {
-        seen.add(item.section);
-        result.push(item.section);
-      }
+      if (!seen.has(item.section)) { seen.add(item.section); result.push(item.section); }
     }
     return result;
   }, [categoryItems]);
@@ -144,9 +121,7 @@ function MenuPageInner({
     return (
       <div className={styles.state}>
         <p className={styles.errorText}>Failed to load menu: {error}</p>
-        <button className={styles.retryBtn} onClick={loadAll}>
-          Retry
-        </button>
+        <button className={styles.retryBtn} onClick={loadAll}>Retry</button>
       </div>
     );
   }
@@ -163,6 +138,11 @@ function MenuPageInner({
 
       <div className={styles.content}>
         <div className={styles.stickyHeader}>
+          <SearchBar
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onFilterClick={() => setIsFilterOpen(true)}
+          />
           <FilterBar
             categories={data.categories}
             activeCategory={activeCategory}
@@ -174,76 +154,48 @@ function MenuPageInner({
           <div className={styles.divider} />
         </div>
 
-<<<<<<< HEAD
         <div className={styles.inner}>
-          <h2 className={styles.categoryHeading}>{activeCategoryLabel}</h2>
+          {activeCategoryLabel && activeCategory !== "all" && (
+            <h2 className={styles.categoryHeading}>{activeCategoryLabel}</h2>
+          )}
           <div className={styles.sections}>
             {Object.entries(groupedSections).map(([sectionName, items]) => (
-              <MenuSection key={sectionName} title={sectionName} items={items} />
-            ))}
-=======
-          <div className={styles.content}>
-            <div className={styles.stickyHeader}>
-              <SearchBar value={searchQuery} onChange={setSearchQuery} onFilterClick={() => setIsFilterOpen(true)} />
-              <FilterBar
-                categories={data.categories}
-                activeCategory={activeCategory}
-                onCategoryChange={handleCategoryChange}
-                sections={sections}
-                activeSection={activeSection}
-                onSectionChange={setActiveSection}
+              <MenuSection
+                key={sectionName}
+                title={sectionName}
+                items={items}
+                onItemClick={(item) => setSelectedItem(item)}
               />
-              <div className={styles.divider} />
-            </div>
-
-
-
-            <div className={styles.inner}>
-              <h2 className={styles.categoryHeading}>{activeCategoryLabel}</h2>
-              <div className={styles.sections}>
-                {Object.entries(groupedSections).map(([sectionName, items]) => (
-                  <MenuSection key={sectionName} title={sectionName} items={items} />
-                ))}
-              </div>
-            </div>
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
+            ))}
           </div>
         </div>
       </div>
 
-<<<<<<< HEAD
-      <CartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        table={activeSection || undefined}
-        companyCode={companyInfo?.companyCode}
-        branchCode={branchCode}
-        branchName={data?.branchName}
-        companyName={data?.companyName}
-        industryType={1992}
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+
+      <FilterDrawer
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        currentFilters={filters}
+        onApply={setFilters}
+        matchingCount={categoryItems.length}
       />
-=======
-          <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
-          <FilterDrawer
-            isOpen={isFilterOpen}
-            onClose={() => setIsFilterOpen(false)}
-            currentFilters={filters}
-            onApply={setFilters}
-            matchingCount={categoryItems.length}
-          />
-          <BottomNav onCartClick={() => setIsCartOpen(true)} />
-        </>
+
+      <BottomNav onCartClick={() => setIsCartOpen(true)} />
+
+      {selectedItem && (
+        <ItemDetailsPage
+          item={selectedItem}
+          companyName={data.companyName}
+          companyCode={companyInfo ? String(companyInfo.companyCode) : undefined}
+          branchCode={companyInfo?.branch ? String(companyInfo.branch.code) : branchCode}
+          onClose={() => setSelectedItem(null)}
+        />
       )}
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
     </main>
   );
 }
 
-<<<<<<< HEAD
-=======
-
-
->>>>>>> abdab53ccacc0a5e63307965a7eb00b933dc85af
 export default function MenuPage({
   params,
 }: {

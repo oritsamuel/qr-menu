@@ -21,6 +21,12 @@
   flex-direction: column;
   animation: slideIn 0.3s ease-out;
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.drawer::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes slideIn {
@@ -247,6 +253,11 @@
   gap: 20px;
   padding-top: 8px;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.formBody::-webkit-scrollbar {
+  display: none;
 }
 
 .formHint {
@@ -461,4 +472,112 @@
   font-weight: 700;
   letter-spacing: 8px;
   text-align: center;
+}
+
+/* ── Collapsed details summary ── */
+.collapsedSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.collapseBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  padding: 6px;
+  color: var(--secondary-foreground);
+  opacity: 0.6;
+  transition: opacity 0.15s;
+  align-self: flex-end;
+}
+
+.collapseBtn:hover {
+  opacity: 1;
+}
+
+.collapsedInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.collapsedName {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.collapsedPhone {
+  font-size: 13px;
+  color: var(--secondary-foreground);
+}
+
+/* ── Order detail on done screen ── */
+.orderDetail {
+  width: 100%;
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.orderDetailTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--secondary-foreground);
+  margin-bottom: 4px;
+}
+
+.orderDetailRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  color: var(--foreground);
+  gap: 8px;
+}
+
+.orderDetailName {
+  font-weight: 600;
+  flex: 1;
+  text-align: left;
+}
+
+.orderDetailQtyPrice {
+  font-size: 13px;
+  color: var(--secondary-foreground);
+  white-space: nowrap;
+  text-align: right;
+}
+
+.orderDetailCharge {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: var(--secondary-foreground);
+  padding-top: 4px;
+  border-top: 1px dashed var(--border);
+}
+
+.orderDetailTotal {
+  display: flex;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--accent);
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
 }

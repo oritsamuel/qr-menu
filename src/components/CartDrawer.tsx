@@ -10,6 +10,7 @@ import {
   authorizePayment,
   checkTransactionResolution,
   saveVoucher,
+  fetchVoucherHistory,
   LineItemResult,
   PaymentOption,
 } from "@/lib/api";
@@ -23,6 +24,7 @@ interface CartDrawerProps {
   branchName?: string;
   companyName?: string;
   industryType?: number;
+  onOrderComplete?: (phone: string) => void;
 }
 
 // Steps: cart → checkout (form + payment options) → otp | ussd_wait | card_wait → done
@@ -31,9 +33,9 @@ type Step = "cart" | "checkout" | "paying" | "otp" | "ussd_wait" | "card_wait" |
 const PHONE_REGEX = /^0[79]\d{8}$/;
 
 const CartDrawer: React.FC<CartDrawerProps> = ({
-  isOpen, onClose, table, companyCode, branchCode, branchName, companyName, industryType = 1992,
+  isOpen, onClose, table, companyCode, branchCode, branchName, companyName, industryType = 1992, onOrderComplete,
 }) => {
-  const { cart, updateQuantity, totalPrice, clearCart } = useCart();
+  const { cart, updateQuantity, totalPrice, clearCart, specialRequest } = useCart();
 
   // ── Calculation ────────────────────────────────────────────────────────────
   const [calcResult, setCalcResult]   = useState<LineItemResult | null>(null);
@@ -52,6 +54,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
   const [paymentOptions, setPaymentOptions] = useState<PaymentOption[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
   const [selectedOption, setSelectedOption] = useState<PaymentOption | null>(null);
+  const [detailsCollapsed, setDetailsCollapsed] = useState(false);
 
   // Transaction + auth
   const [transactionId, setTransactionId]   = useState<string | null>(null);
@@ -67,7 +70,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   // Card polling
-  const [polling, setPolling]       = useState(false);
+  const [polling, setPolling]       = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
   const [pollError, setPollError]   = useState<string | null>(null);
   const pollTimerRef                = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveAbortRef                = useRef<AbortController | null>(null);
@@ -99,6 +102,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
       setDirty(false); setCalcResult(null); setStep("cart");
       setName(""); setPhone(""); setFormError(null);
       setPaymentOptions([]); setLoadingOptions(false); setSelectedOption(null);
+      setDetailsCollapsed(false);
       setTransactionId(null); setAuthorizing(false); setAuthError(null); setAuthResult(null);
       setOtp(""); setSaving(false); setSaveError(null);
       setPolling(false); setPollError(null);
@@ -118,7 +122,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
     setLoadingOptions(true);
     setSelectedOption(null);
     fetchPaymentOptions(phone.trim(), companyCode!, branchCode!)
-      .then(setPaymentOptions)
+      .then((opts) => { setPaymentOptions(opts); setDetailsCollapsed(true); })
       .catch(() => setPaymentOptions([]))
       .finally(() => setLoadingOptions(false));
   }, [phone, step]);
@@ -318,7 +322,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           scheduleDateTime: null,
           servingMethodType: "IN_HOUSE_DINING",
           specificAddressName: null,
-          specialRequest: null,
+          specialRequest: specialRequest || null,
           selectedTableName: table || null,
         },
         deliveryOrderRequest: null,
@@ -333,6 +337,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
       });
 
       if (!result.isSuccessful) throw new Error(result.errorMessages?.join(", ") ?? "Failed to save order");
+      // The server generates a new voucherCode — fetch history to get the actual code
+      try {
+        await new Promise((r) => setTimeout(r, 1000)); // wait 1s for server to commit
+        const history = await fetchVoucherHistory(phone.trim(), 1);
+        if (history.length > 0) setTransactionId(history[0].voucherCode);
+      } catch {
+        // Keep the generated transactionId if history fetch fails
+      }
+      onOrderComplete?.(phone.trim());
       setStep("done");
     } catch (err: unknown) {
       setSaveError(err instanceof Error ? err.message : "Failed to save order.");
@@ -415,17 +428,40 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
           <div className={styles.formBody}>
             <p className={styles.formHint}>Enter your details and choose a payment method.</p>
 
-            <div className={styles.field}>
-              <label className={styles.label}>Full Name</label>
-              <input className={styles.input} type="text" placeholder="e.g. Abebe Kebede"
-                value={name} onChange={(e) => setName(e.target.value)} />
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>Phone Number</label>
-              <input className={styles.input} type="tel" placeholder="e.g. 0912345678"
-                value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </div>
+            {/* Fields — always shown, chevron below phone collapses when options are loaded */}
+            {!detailsCollapsed ? (
+              <>
+                <div className={styles.field}>
+                  <label className={styles.label}>Full Name</label>
+                  <input className={styles.input} type="text" placeholder="e.g. Abebe Kebede"
+                    value={name} onChange={(e) => setName(e.target.value)} />
+                </div>
+                <div className={styles.field}>
+                  <label className={styles.label}>Phone Number</label>
+                  <input className={styles.input} type="tel" placeholder="e.g. 0912345678"
+                    value={phone} onChange={(e) => setPhone(e.target.value)} />
+                </div>
+                {paymentOptions.length > 0 && (
+                  <button className={styles.collapseBtn} onClick={() => setDetailsCollapsed(true)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="18 15 12 9 6 15" />
+                    </svg>
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className={styles.collapsedSummary}>
+                <div className={styles.collapsedInfo}>
+                  <span className={styles.collapsedName}>{name}</span>
+                  <span className={styles.collapsedPhone}>{phone}</span>
+                </div>
+                <button className={styles.collapseBtn} onClick={() => setDetailsCollapsed(false)}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+              </div>
+            )}
 
             {/* Payment options appear automatically once phone is valid */}
             {loadingOptions && (
@@ -561,9 +597,33 @@ const CartDrawer: React.FC<CartDrawerProps> = ({
             <h3 className={styles.doneTitle}>Order Placed!</h3>
             <p className={styles.doneText}>Your order has been placed for <strong>{table}</strong>.</p>
             <div className={styles.txBox}>
-              <p className={styles.txLabel}>Transaction ID</p>
+              <p className={styles.txLabel}>Ecom Ref</p>
               <p className={styles.txId}>{transactionId}</p>
             </div>
+
+            {/* Order detail */}
+            <div className={styles.orderDetail}>
+              <p className={styles.orderDetailTitle}>Order Summary</p>
+              {cart.map((item) => (
+                <div key={item.id} className={styles.orderDetailRow}>
+                  <span className={styles.orderDetailName}>{item.name}</span>
+                  <span className={styles.orderDetailQtyPrice}>
+                    ×{item.quantity} &nbsp; ETB {(item.price * item.quantity).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+              {calcResult && Object.entries(calcResult.extraCharge).map(([label, val]) => (
+                <div key={label} className={styles.orderDetailCharge}>
+                  <span>{label}</span>
+                  <span>ETB {Number(val).toFixed(2)}</span>
+                </div>
+              ))}
+              <div className={styles.orderDetailTotal}>
+                <span>Total</span>
+                <span>ETB {(calcResult?.grandTotal ?? totalPrice).toFixed(2)}</span>
+              </div>
+            </div>
+
             {selectedOption && (
               <div className={styles.paymentSummary}>
                 <img src={selectedOption.paymentProcessorUnitImage} alt={selectedOption.paymentProcessorUnitName} className={styles.paymentLogoSm} />

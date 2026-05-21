@@ -92,23 +92,25 @@ import { MenuItem, Category, MenuData } from "@/data/menuData";
 /** Recursively collect leaf products from the nested category tree */
 function collectProducts(
   nodes: (ApiCategory | ApiProduct)[],
-  superParentName: string, // top-level category (FOOD, BEVERAGE…)
-  parentName: string        // immediate parent = section name
+  superParentName: string,
+  superParentCode: number,
+  parentName: string,
+  parentCode: number
 ): MenuItem[] {
   const items: MenuItem[] = [];
 
   for (const node of nodes) {
     if ("children" in node) {
-      // It's a category node — recurse, using this node's name as the new section
       items.push(
         ...collectProducts(
           node.children,
           superParentName,
-          node.name // e.g. "Burger", "Soft Drink"
+          superParentCode,
+          node.name,
+          node.code
         )
       );
     } else {
-      // It's a leaf product
       const product = node as ApiProduct;
       if (!product.isAvailable) continue;
       items.push({
@@ -119,7 +121,9 @@ function collectProducts(
         currency: product.currency || "Birr",
         image: product.pictures?.[0] ?? "",
         category: superParentName.toLowerCase().replace(/\s+/g, "-"),
+        categoryCode: superParentCode,
         section: parentName,
+        sectionCode: parentCode,
       });
     }
   }
@@ -151,7 +155,7 @@ export async function fetchMenuData(
 
   for (const superParent of json.data) {
     allItems.push(
-      ...collectProducts(superParent.children, superParent.name, superParent.name)
+      ...collectProducts(superParent.children, superParent.name, superParent.code, superParent.name, superParent.code)
     );
   }
 
@@ -381,7 +385,7 @@ export interface VoucherSaveRequest {
     scheduleDateTime: null;
     servingMethodType: string;
     specificAddressName: null;
-    specialRequest: null;
+    specialRequest: string | null;
     selectedTableName: string | null;
   };
   deliveryOrderRequest: null;
@@ -461,7 +465,7 @@ export interface OnSuccess {
   scheduleDateTime: string | null;
 }
 
-export async function saveVoucher(req: VoucherSaveRequest): Promise<{ isSuccessful: boolean; errorMessages: string[] | null; transactionReference: string | null }> {
+export async function saveVoucher(req: VoucherSaveRequest): Promise<{ isSuccessful: boolean; errorMessages: string[] | null; transactionReference: string | null; voucherCode?: string }> {
 
 
   // console.log("--- VOUCHER OBJECT SHAPE ---");
@@ -622,6 +626,106 @@ export async function fetchCompanyByTin(
     tin: company.tin,
     branch,
   };
+}
+
+export interface ItemModifier {
+  id: number;
+  pointer: number;       // matches item's article code
+  reference: number;     // group key for normal modifiers
+  description: string | null;
+  category: number;      // 2068 = payable, 2066 = normal/free
+  article: number | null;
+  name: string | null;
+  uom: number | null;
+  defaultTax: number | null;
+  defaultValue: number | null; // price
+}
+
+export const MODIFIER_POINTER_ARTICLE  = 752; // modifier applies to a specific item
+export const MODIFIER_POINTER_CATEGORY = 701; // modifier applies to a category/super-category
+
+export async function fetchModifiers(
+  companyCode: string,
+  branchCode: string
+): Promise<ItemModifier[]> {
+  const res = await fetch(`/api/modifiers/${companyCode}/${branchCode}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error ?? `Modifiers API error: ${res.status}`);
+  }
+  const json = await res.json();
+  if (!json.isSuccessful) {
+    throw new Error(json.errorMessages?.join(", ") ?? "Failed to fetch modifiers");
+  }
+  return json.data as ItemModifier[];
+}
+
+export interface VoucherDetail {
+  lineItems: { article: number; name: string; unitAmount: number; quantity: number; taxableAmount: number; note: string; }[];
+  extraCharge: Record<string, number>;
+  grandTotal: number;
+  extraInformation: Record<string, string>;
+  extraData: { voucherId: number; tin: string; isBilled: boolean; restaurant: string; "status:": string; };
+  issuedDate: string;
+  branchCode: number;
+  promoDetail: null;
+  phoneNumber: string;
+  companyName: string;
+  voucherCode: string;
+}
+
+export async function fetchVoucherDetail(
+  voucherCode: string,
+  companyCode: number,
+  industryType = 1992
+): Promise<VoucherDetail> {
+  const params = new URLSearchParams({
+    voucherCode,
+    companyCode: String(companyCode),
+    industryType: String(industryType),
+  });
+  const res = await fetch(`/api/voucher/detail?${params.toString()}`, { cache: "no-store" });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `Detail API error: ${res.status}`);
+  }
+  const json = await res.json();
+  if (!json.isSuccessful) throw new Error(json.errorMessages?.join(", ") ?? "Failed to fetch detail");
+  return json.data as VoucherDetail;
+}
+
+export interface VoucherHistory {
+  companyCode: number;
+  companyName: string;
+  branchCode: number;
+  branchName: string;
+  industryType: number;
+  voucherCode: string;
+  issuedDate: string;
+  grandTotal: number;
+  logo: string;
+  tin: string;
+}
+
+export async function fetchVoucherHistory(
+  phoneNumber: string,
+  page = 1
+): Promise<VoucherHistory[]> {
+  const res = await fetch(
+    `/api/voucher/history?code=${encodeURIComponent(phoneNumber)}&page=${page}`,
+    { cache: "no-store" }
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error ?? `History API error: ${res.status}`);
+  }
+  const json = await res.json();
+  if (!json.isSuccessful) {
+    throw new Error(json.errorMessages?.join(", ") ?? "Failed to fetch history");
+  }
+  return json.data as VoucherHistory[];
 }
 
 // fetchCompanyInfo removed — use fetchCompanyByTin instead

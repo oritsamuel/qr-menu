@@ -125,3 +125,19 @@
 }
 
 
+
+.historyBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--secondary);
+  color: var(--foreground);
+  transition: background 0.15s;
+}
+
+.historyBtn:hover {
+  background: var(--border);
+}

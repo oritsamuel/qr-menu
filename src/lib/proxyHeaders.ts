@@ -10,8 +10,8 @@ export async function getProxyHeaders(): Promise<Record<string, string>> {
     "Content-Type": "application/json",
     "X-Metadata": JSON.stringify({
       platform: "Android",
-      latitude: 37.4219983,
-      longitude: -122.084,
+      latitude: 0,
+      longitude: 0,
       appVersion: APP_VERSION,
       code: GUEST_CODE,
       langLocale: "en",

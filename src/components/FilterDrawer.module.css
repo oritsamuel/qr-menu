@@ -116,8 +116,9 @@
   background: #eae6eae7;
 }
 
-.pillActive {
-  background: #c84b4b; /* Crimson Accent Red matching cart & requirements */
+.pillActive,
+.pillActive:hover {
+  background: #c84b4b;
   color: #ffffff;
   box-shadow: 0 4px 10px rgba(200, 75, 75, 0.2);
 }

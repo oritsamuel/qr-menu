@@ -100,7 +100,7 @@ const FilterDrawer: React.FC<FilterDrawerProps> = ({
             Reset All
           </button>
           <button className={styles.applyBtn} onClick={handleApply}>
-            Show {matchingCount} {matchingCount === 1 ? "Item" : "Items"}
+            Apply
           </button>
         </div>
       </div>

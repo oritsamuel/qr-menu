@@ -15,12 +15,15 @@ interface CartContextType {
   totalCount: number;
   totalPrice: number;
   clearCart: () => void;
+  specialRequest: string;
+  setSpecialRequest: (val: string) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [specialRequest, setSpecialRequest] = useState<string>("");
 
   const addItem = (item: MenuItem) => {
     setCart((prev) => {
@@ -48,7 +51,7 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     );
   };
 
-  const clearCart = () => setCart([]);
+  const clearCart = () => { setCart([]); setSpecialRequest(""); };
 
   const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const totalPrice = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -63,6 +66,8 @@ export const CartProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         totalCount,
         totalPrice,
         clearCart,
+        specialRequest,
+        setSpecialRequest,
       }}
     >
       {children}

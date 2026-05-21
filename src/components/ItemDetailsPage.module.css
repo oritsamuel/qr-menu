@@ -343,3 +343,101 @@
   }
 }
 
+
+/* ── Modifiers ── */
+.modifierSection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.modifierSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.modifierCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fff5f5;
+  border: 1px solid rgba(200, 75, 75, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  gap: 12px;
+}
+
+.modifierInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.modifierName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.modifierPrice {
+  font-size: 12px;
+  font-weight: 700;
+  color: #c84b4b;
+}
+
+.addExtraBtn {
+  background: #c84b4b;
+  color: white;
+  padding: 7px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+
+.addExtraBtnActive {
+  background: #2e7d32;
+}
+
+.extraCounter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.modifierCardActive {
+  border-color: rgba(200, 75, 75, 0.3);
+  background: #fff5f5;
+}
+
+/* ── Normal modifier chips ── */
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 7px 14px;
+  border-radius: 20px;
+  border: 1.5px solid #e0d8d8;
+  background: white;
+  font-size: 13px;
+  font-weight: 600;
+  color: #706868;
+  transition: all 0.15s;
+}
+
+.chipActive {
+  background: #c84b4b;
+  border-color: #c84b4b;
+  color: white;
+}

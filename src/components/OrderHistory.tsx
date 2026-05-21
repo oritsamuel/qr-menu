@@ -130,7 +130,7 @@ const OrderHistory: React.FC<OrderHistoryProps> = ({ isOpen, onClose, phone }) =
                   </thead>
                   <tbody>
                     {detail.lineItems.map((li) => (
-                      <tr key={li.lineItemId ?? li.article}>
+                      <tr key={li.article ?? li.article}>
                         <td className={styles.tdDesc}>{li.name.toUpperCase()}</td>
                         <td className={styles.tdNum}>{li.quantity}</td>
                         <td className={styles.tdNum}>{li.unitAmount.toFixed(2)}</td>

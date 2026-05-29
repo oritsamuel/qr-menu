@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getProxyHeaders } from "@/lib/proxyHeaders";
 
-const BASE = "https://v7-hulubeje.cnetcommerce.com/api";
+const BASE           = process.env.HULUBEJE_BASE_URL ?? "https://v7-hulubeje.cnetcommerce.com/api";
+const API_KEY        = process.env.HULUBEJE_API_KEY ?? "";
 
 export async function POST(req: NextRequest) {
   try {
